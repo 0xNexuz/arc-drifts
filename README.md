@@ -51,4 +51,24 @@ graph TD
     class Sender,Recipient user;
     class Contract contract;
     class Bot bot; 
-```
+
+
+sequenceDiagram
+    participant U as 👤 Sender
+    participant SC as 📜 ArcDriftCore (Vault)
+    participant Bot as 🤖 Keeper Bot
+    participant R as 👤 Recipient
+
+    U->>SC: 1. createDrift(recipient, 5 USDC, 1 Hour)
+    Note over SC: 🔒 Vault Locked
+    Note over SC, Bot: ⏳ 1 Hour Passes...
+    loop Every Block
+        Bot->>SC: Check block.timestamp
+    end
+    Note over Bot: Timer Expired!
+    Bot->>SC: 2. executeDrift(driftId)
+    Note right of Bot: Bot pays the ARC gas fee
+    Note over SC: Vault Unlocked 🔓
+    SC-->>R: 3. Transfer 5 USDC
+    Note right of R: Recipient gets funds (Zero Gas)
+
