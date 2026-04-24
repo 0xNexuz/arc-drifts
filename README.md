@@ -31,3 +31,18 @@ graph TD
     Contract -->|6. Auto-Transfer| Recipient
 
 ```
+Tech Stack
+Frontend: Next.js, Tailwind CSS, TypeScript
+Web3 Integration: Ethers.js (v6)
+Smart Contracts: Solidity, deployed via Remix
+Automation: Node.js (Ethers Keeper Bot)
+Assets: Official ARC Testnet USDC (6 Decimals)
+Deployment: Vercel
+
+Getting Started (Local Development)
+1. Clone the repository
+2. git clone [https://github.com/yourusername/arc-drifts.git](https://github.com/yourusername/arc-drifts.git)
+cd arc-drifts
+
+Install Dependencies
+npm install
