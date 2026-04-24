@@ -50,4 +50,4 @@ graph TD
     
     class Sender,Recipient user;
     class Contract contract;
-    class Bot bot;
+    class Bot bot; ```
