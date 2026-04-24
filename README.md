@@ -51,8 +51,9 @@ graph TD
     class Sender,Recipient user;
     class Contract contract;
     class Bot bot; 
+```
 
-
+```mermaid
 sequenceDiagram
     participant U as 👤 Sender
     participant SC as 📜 ArcDriftCore (Vault)
@@ -71,4 +72,5 @@ sequenceDiagram
     Note over SC: Vault Unlocked 🔓
     SC-->>R: 3. Transfer 5 USDC
     Note right of R: Recipient gets funds (Zero Gas)
+```
 
