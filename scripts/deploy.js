@@ -1,5 +1,7 @@
-import { ethers } from "hardhat";
+import { network } from "hardhat";
 import fs from "fs";
+
+const { ethers } = await network.create();
 
 async function main() {
   console.log("Deploying ArcDriftCore to Arc Testnet...");

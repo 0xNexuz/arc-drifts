@@ -8,8 +8,9 @@ export default defineConfig({
   solidity: "0.8.28",
   networks: {
     arcTestnet: {
-      type: "http", 
-      url: process.env.ARC_RPC_URL || "https://rpc-testnet.arc.xyz",
+      type: "http",
+      chainType: "l1",
+      url: process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network",
       chainId: 5042002,
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [] 
     }
