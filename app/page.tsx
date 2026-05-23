@@ -50,6 +50,13 @@ type TxProof = {
   proofPending?: boolean;
 };
 
+type Notice = {
+  id: string;
+  title: string;
+  body?: string;
+  tone: "info" | "success" | "warning" | "error";
+};
+
 const streamTypes: Array<{
   id: StreamType;
   label: string;
@@ -299,6 +306,7 @@ export default function Home() {
     interval: number;
   } | null>(null);
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1000));
+  const [notices, setNotices] = useState<Notice[]>([]);
 
   const selectedType = useMemo(
     () => streamTypes.find((type) => type.id === streamType) ?? streamTypes[0],
@@ -376,6 +384,18 @@ export default function Home() {
     ? `${Math.round(progressPercent)}% unlocked`
     : "No active stream preview";
 
+  function notify(title: string, body: string | undefined, tone: Notice["tone"] = "info") {
+    const id = crypto.randomUUID();
+    setNotices((current) => [...current, { id, title, body, tone }].slice(-4));
+    window.setTimeout(() => {
+      setNotices((current) => current.filter((notice) => notice.id !== id));
+    }, 6500);
+  }
+
+  function dismissNotice(id: string) {
+    setNotices((current) => current.filter((notice) => notice.id !== id));
+  }
+
   async function refreshUsdcBalance(session = circleSession) {
     if (!session) {
       setUsdcBalance(null);
@@ -399,8 +419,11 @@ export default function Home() {
 
       setUsdcBalance(data.balance ?? "0");
       setBalanceStatus("USDC balance updated");
+      notify("Balance updated", `${formatBalance(data.balance ?? "0")} USDC`, "success");
     } catch (error: unknown) {
-      setBalanceStatus(getErrorMessage(error));
+      const message = getErrorMessage(error);
+      setBalanceStatus(message);
+      notify("Balance refresh failed", message, "error");
     }
   }
 
@@ -413,6 +436,7 @@ export default function Home() {
     setStreamStatus("Wallet disconnected");
     setFaucetStatus("Request test USDC after connecting.");
     setBalanceStatus("Connect wallet to view USDC");
+    notify("Wallet disconnected", "Your local Circle session was cleared.", "info");
   }
 
   async function openFaucet() {
@@ -424,8 +448,10 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(circleSession.address);
       setFaucetStatus("Wallet copied. In Circle Faucet, choose Arc Testnet and paste the address.");
+      notify("Wallet copied", "Circle Faucet is opening. Choose Arc Testnet and paste the address.", "success");
     } catch {
       setFaucetStatus("Open Circle Faucet, choose Arc Testnet, and paste your connected wallet address.");
+      notify("Open Circle Faucet", "Choose Arc Testnet and paste your connected wallet address.", "info");
     }
 
     window.open(CIRCLE_FAUCET, "_blank", "noopener,noreferrer");
@@ -439,6 +465,7 @@ export default function Home() {
 
     if (!isAddress(recipient)) {
       setStreamStatus("Recipient address is invalid");
+      notify("Invalid recipient", "Check the recipient wallet address and try again.", "error");
       return;
     }
 
@@ -446,6 +473,7 @@ export default function Home() {
 
     if (parsedAmount <= 0n) {
       setStreamStatus("Amount must be greater than 0 USDC");
+      notify("Invalid amount", "Amount must be greater than 0 USDC.", "error");
       return;
     }
 
@@ -481,6 +509,7 @@ export default function Home() {
       });
 
       setStreamStatus("Approve USDC in Circle");
+      notify("Approval ready", "Confirm the USDC approval in Circle.", "info");
       const approvalProof = await completeChallengeWithProof(
         circleSession,
         approvalChallenge,
@@ -494,6 +523,11 @@ export default function Home() {
         type: approvalProof.type,
         proofPending: approvalProof.proofPending,
       }]);
+      notify(
+        "USDC approval signed",
+        approvalProof.txHash ? "Approval hash is available." : "Approval accepted; proof may still be indexing.",
+        approvalProof.txHash ? "success" : "warning",
+      );
 
       setStreamStatus("Preparing stream contract call");
       const driftChallenge = await createChallenge("/api/create-drift-challenge", {
@@ -508,6 +542,7 @@ export default function Home() {
       });
 
       setStreamStatus("Confirm stream in Circle");
+      notify("Stream ready", "Confirm the stream contract call in Circle.", "info");
       const driftProof = await completeChallengeWithProof(
         circleSession,
         driftChallenge,
@@ -529,10 +564,17 @@ export default function Home() {
           ? "Stream submitted; proof is still indexing"
           : "Stream submitted with transaction proof",
       );
+      notify(
+        "Stream submitted",
+        driftProof.txHash ? "Transaction hash is available in the proof panel." : "Circle accepted the transaction; hash is indexing.",
+        driftProof.txHash ? "success" : "warning",
+      );
       await refreshUsdcBalance(circleSession);
     } catch (err: unknown) {
       console.error("Tx Error:", err);
-      setStreamStatus(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setStreamStatus(message);
+      notify("Transaction failed", message, "error");
     } finally {
       setStreaming(false);
     }
@@ -842,6 +884,36 @@ export default function Home() {
         </section>
       </main>
 
+      {notices.length > 0 && (
+        <div className="fixed bottom-5 right-5 z-[60] grid w-[min(24rem,calc(100vw-2rem))] gap-3">
+          {notices.map((notice) => (
+            <div
+              key={notice.id}
+              className={`rounded-lg border bg-[#151515]/95 p-4 shadow-xl shadow-black/30 backdrop-blur ${
+                notice.tone === "success" ? "border-[#ACC6E9]/50" :
+                notice.tone === "warning" ? "border-[#D5E0E7]/50" :
+                notice.tone === "error" ? "border-red-400/50" :
+                "border-[#EDEDED]/15"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-[#EDEDED]">{notice.title}</p>
+                  {notice.body && <p className="mt-1 text-sm leading-6 text-[#AFAFAF]">{notice.body}</p>}
+                </div>
+                <button
+                  onClick={() => dismissNotice(notice.id)}
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[#EDEDED]/10 text-sm text-[#AFAFAF] transition hover:border-[#ACC6E9] hover:text-[#ACC6E9]"
+                  aria-label="Dismiss notification"
+                >
+                  x
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {showLogin && (
         <LoginModal
           onLoginSuccess={(session) => {
@@ -849,6 +921,7 @@ export default function Home() {
             window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
             setStreamStatus("Wallet connected");
             setFaucetStatus(`Ready to copy ${formatAddress(session.address)} and open Circle Faucet.`);
+            notify("Wallet connected", `${formatAddress(session.address)} is ready on Arc Testnet.`, "success");
             void refreshUsdcBalance(session);
             setShowLogin(false);
           }}
