@@ -8,6 +8,7 @@ import LoginModal, { type CircleSession } from "./components/LoginModal";
 const RECIPIENT_ADDRESS = "0x7034aF41397893321c4458ABB3B98F6c67065FaB";
 const ARC_EXPLORER = "https://testnet.arcscan.app";
 const CIRCLE_FAUCET = "https://faucet.circle.com/?allow=true";
+const SESSION_STORAGE_KEY = "arc-drift-circle-session";
 
 type StreamType = "streaming" | "delayed" | "cancelable" | "recurring";
 type TimeUnit = "minutes" | "hours" | "days";
@@ -24,16 +25,25 @@ type BalanceResponse = {
   error?: string;
 };
 
+type TransactionProofResponse = {
+  transactionId?: string | null;
+  txHash?: string | null;
+  state?: string | null;
+  error?: string;
+};
+
 type CircleChallengeProof = {
   type?: string;
   status?: string;
   txHash?: string;
   signedTransaction?: string;
+  transactionId?: string;
 };
 
 type TxProof = {
   label: string;
   hash?: string;
+  transactionId?: string;
   status?: string;
   type?: string;
 };
@@ -110,6 +120,10 @@ function formatBalance(value: string | null) {
   });
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function executeCircleChallenge(session: CircleSession, challengeId: string) {
   return import("@circle-fin/w3s-pw-web-sdk").then(({ W3SSdk }) => (
     new Promise<CircleChallengeProof>((resolve, reject) => {
@@ -168,12 +182,96 @@ async function createChallenge(path: string, body: Record<string, string | numbe
   return data.challengeId;
 }
 
+async function lookupTransactionProof(
+  session: CircleSession,
+  contractAddress: string | undefined,
+  createdAfter: string,
+) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const res = await fetch("/api/transaction-proof", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userToken: session.userToken,
+        walletId: session.walletId,
+        contractAddress,
+        createdAfter,
+      }),
+    });
+    const data = await res.json() as TransactionProofResponse;
+
+    if (!res.ok) {
+      throw new Error(data.error ?? "Failed to fetch transaction proof");
+    }
+
+    if (data.txHash || data.transactionId) {
+      return data;
+    }
+
+    await wait(attempt < 4 ? 1500 : 2500);
+  }
+
+  return null;
+}
+
+async function completeChallengeWithProof(
+  session: CircleSession,
+  challengeId: string,
+  contractAddress?: string,
+) {
+  const createdAfter = new Date().toISOString();
+  const proof = await executeCircleChallenge(session, challengeId);
+
+  if (proof.txHash) {
+    return proof;
+  }
+
+  const lookup = await lookupTransactionProof(session, contractAddress, createdAfter);
+
+  return {
+    ...proof,
+    txHash: lookup?.txHash ?? undefined,
+    transactionId: lookup?.transactionId ?? undefined,
+    status: lookup?.state ?? proof.status,
+  };
+}
+
+function readStoredSession() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!rawSession) {
+      return null;
+    }
+
+    const session = JSON.parse(rawSession) as CircleSession;
+
+    if (session.userToken && session.encryptionKey && session.walletId && session.address) {
+      return session;
+    }
+  } catch {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  }
+
+  return null;
+}
+
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
-  const [circleSession, setCircleSession] = useState<CircleSession | null>(null);
-  const [streamStatus, setStreamStatus] = useState("Ready for wallet");
+  const [circleSession, setCircleSession] = useState<CircleSession | null>(() => readStoredSession());
+  const [streamStatus, setStreamStatus] = useState(() => (
+    readStoredSession() ? "Wallet restored" : "Ready for wallet"
+  ));
   const [streaming, setStreaming] = useState(false);
-  const [faucetStatus, setFaucetStatus] = useState("Request test USDC after connecting.");
+  const [faucetStatus, setFaucetStatus] = useState(() => {
+    const storedSession = readStoredSession();
+    return storedSession
+      ? `Ready to copy ${formatAddress(storedSession.address)} and open Circle Faucet.`
+      : "Request test USDC after connecting.";
+  });
   const [recipient, setRecipient] = useState(RECIPIENT_ADDRESS);
   const [amount, setAmount] = useState("1");
   const [streamType, setStreamType] = useState<StreamType>("streaming");
@@ -300,6 +398,7 @@ export default function Home() {
 
   function disconnect() {
     setCircleSession(null);
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
     setProofs([]);
     setLastStreamWindow(null);
     setUsdcBalance(null);
@@ -374,8 +473,18 @@ export default function Home() {
       });
 
       setStreamStatus("Approve USDC in Circle");
-      const approvalProof = await executeCircleChallenge(circleSession, approvalChallenge);
-      setProofs([{ label: "USDC approval", hash: approvalProof.txHash, status: approvalProof.status, type: approvalProof.type }]);
+      const approvalProof = await completeChallengeWithProof(
+        circleSession,
+        approvalChallenge,
+        process.env.NEXT_PUBLIC_USDC_ADDRESS,
+      );
+      setProofs([{
+        label: "USDC approval",
+        hash: approvalProof.txHash,
+        transactionId: approvalProof.transactionId,
+        status: approvalProof.status,
+        type: approvalProof.type,
+      }]);
 
       setStreamStatus("Preparing stream contract call");
       const driftChallenge = await createChallenge("/api/create-drift-challenge", {
@@ -390,10 +499,20 @@ export default function Home() {
       });
 
       setStreamStatus("Confirm stream in Circle");
-      const driftProof = await executeCircleChallenge(circleSession, driftChallenge);
+      const driftProof = await completeChallengeWithProof(
+        circleSession,
+        driftChallenge,
+        process.env.NEXT_PUBLIC_ARC_DRIFT_CONTRACT_ADDRESS,
+      );
       setProofs((current) => [
         ...current,
-        { label: selectedType.label, hash: driftProof.txHash, status: driftProof.status, type: driftProof.type },
+        {
+          label: selectedType.label,
+          hash: driftProof.txHash,
+          transactionId: driftProof.transactionId,
+          status: driftProof.status,
+          type: driftProof.type,
+        },
       ]);
       setStreamStatus("Stream submitted with transaction proof");
       await refreshUsdcBalance(circleSession);
@@ -690,8 +809,10 @@ export default function Home() {
                           <a href={`${ARC_EXPLORER}/tx/${proof.hash}`} target="_blank" rel="noreferrer" className="mt-3 block break-all font-mono text-sm text-[#ACC6E9] hover:text-[#EDEDED]">
                             {formatHash(proof.hash)}
                           </a>
+                        ) : proof.transactionId ? (
+                          <p className="mt-3 break-all font-mono text-sm text-[#AFAFAF]">Circle transaction: {proof.transactionId}</p>
                         ) : (
-                          <p className="mt-3 text-sm text-[#AFAFAF]">Circle completed the challenge, but no tx hash was returned yet.</p>
+                          <p className="mt-3 text-sm text-[#AFAFAF]">Circle accepted the challenge. Hash is still indexing; refresh in a few seconds.</p>
                         )}
                       </div>
                     ))
@@ -707,6 +828,7 @@ export default function Home() {
         <LoginModal
           onLoginSuccess={(session) => {
             setCircleSession(session);
+            window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
             setStreamStatus("Wallet connected");
             setFaucetStatus(`Ready to copy ${formatAddress(session.address)} and open Circle Faucet.`);
             void refreshUsdcBalance(session);
