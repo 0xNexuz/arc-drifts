@@ -22,7 +22,7 @@ const workflow = [
 const rails = [
   "User-controlled wallet",
   "SCA account type",
-  "ETH-SEPOLIA",
+  "ARC-TESTNET",
   "USDC approval",
   "Timed unlock",
 ];

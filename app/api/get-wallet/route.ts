@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
     const data = await res.json() as { data?: { wallets?: CircleWallet[] } };
     const wallet = data.data?.wallets?.find((candidate) => (
-      candidate.blockchain === "ETH-SEPOLIA" && Boolean(candidate.address)
+      candidate.blockchain === "ARC-TESTNET" && Boolean(candidate.address)
     ));
 
     return NextResponse.json({

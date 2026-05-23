@@ -1,7 +1,7 @@
 import { initiateUserControlledWalletsClient } from "@circle-fin/user-controlled-wallets";
 import { NextResponse } from "next/server";
 
-const BLOCKCHAIN = "ETH-SEPOLIA";
+const BLOCKCHAIN = "ARC-TESTNET";
 const ACCOUNT_TYPE = "SCA";
 
 type CircleWallet = {
