@@ -1,14 +1,16 @@
 /* Based on https://github.com/tsconfig/bases/blob/501da2bcd640cf95c95805783e1012b992338f28/bases/node22.json */{
   "compilerOptions": {
     "lib": [
+      "dom",
+      "dom.iterable",
       "es2023"
     ],
-    "module": "node16",
+    "module": "esnext",
     "target": "es2022",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "moduleResolution": "node16",
+    "moduleResolution": "bundler",
     "outDir": "dist",
     "allowJs": true,
     "noEmit": true,
@@ -25,12 +27,17 @@
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts",
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next/dev/**",
+    "artifacts/**",
+    "cache/**",
+    "dist/**",
+    "frontend/**",
+    "types/**"
   ]
 }
