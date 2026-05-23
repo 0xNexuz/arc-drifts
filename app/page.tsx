@@ -303,29 +303,29 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#050607] text-[#F6F2E8] selection:bg-[#B8FF2C] selection:text-black">
-      <nav className="fixed left-0 right-0 top-0 z-40 border-b border-[#F6F2E8]/10 bg-[#050607]/82 backdrop-blur-xl">
+    <div className="min-h-screen overflow-x-hidden bg-[#050505] text-[#EDEDED] selection:bg-[#ACC6E9] selection:text-black">
+      <nav className="fixed left-0 right-0 top-0 z-40 border-b border-[#EDEDED]/10 bg-[#050505]/82 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8">
           <a href="#top" className="flex items-center gap-3" aria-label="Arc Drift home">
             <Image src="/arc-drift-logo.svg" alt="" width={32} height={32} priority />
             <span className="text-sm font-semibold uppercase tracking-[0.28em]">Arc Drift</span>
           </a>
-          <div className="hidden items-center gap-8 text-xs uppercase tracking-[0.22em] text-[#A6AFA5] md:flex">
-            <a href="#workflow" className="transition hover:text-[#B8FF2C]">Flow</a>
-            <a href="#fund" className="transition hover:text-[#B8FF2C]">Faucet</a>
-            <a href="#deploy" className="transition hover:text-[#B8FF2C]">Deploy</a>
+          <div className="hidden items-center gap-8 text-xs uppercase tracking-[0.22em] text-[#AFAFAF] md:flex">
+            <a href="#workflow" className="transition hover:text-[#ACC6E9]">Flow</a>
+            <a href="#fund" className="transition hover:text-[#ACC6E9]">Faucet</a>
+            <a href="#deploy" className="transition hover:text-[#ACC6E9]">Deploy</a>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => !circleSession && setShowLogin(true)}
-              className="h-10 rounded-lg border border-[#F6F2E8]/15 px-4 text-sm text-[#F6F2E8] transition hover:border-[#B8FF2C] hover:text-[#B8FF2C]"
+              className="h-10 rounded-lg border border-[#EDEDED]/15 px-4 text-sm text-[#EDEDED] transition hover:border-[#ACC6E9] hover:text-[#ACC6E9]"
             >
               {circleSession ? circleSession.displayAddress : "Sign in"}
             </button>
             {circleSession && (
               <button
                 onClick={disconnect}
-                className="h-10 rounded-lg bg-[#F6F2E8] px-4 text-sm font-semibold text-[#050607] transition hover:bg-[#B8FF2C]"
+                className="h-10 rounded-lg bg-[#EDEDED] px-4 text-sm font-semibold text-[#050505] transition hover:bg-[#ACC6E9]"
               >
                 Disconnect
               </button>
@@ -335,29 +335,29 @@ export default function Home() {
       </nav>
 
       <main id="top" className="relative">
-        <section className="min-h-screen border-b border-[#F6F2E8]/10 pt-16">
+        <section className="min-h-screen border-b border-[#EDEDED]/10 pt-16">
           <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl grid-cols-1 gap-10 px-5 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
             <div className="flex flex-col justify-center py-20" data-reveal>
-              <p className="mb-6 w-fit border border-[#B8FF2C]/40 px-3 py-2 text-xs uppercase tracking-[0.24em] text-[#B8FF2C]">
+              <p className="mb-6 w-fit border border-[#ACC6E9]/40 px-3 py-2 text-xs uppercase tracking-[0.24em] text-[#ACC6E9]">
                 Circle programmable streams
               </p>
-              <h1 className="max-w-4xl text-[clamp(3.2rem,9vw,8rem)] font-medium leading-[0.88] tracking-normal text-[#F6F2E8]">
+              <h1 className="max-w-4xl text-[clamp(3.2rem,9vw,8rem)] font-medium leading-[0.88] tracking-normal text-[#EDEDED]">
                 Pick the rule. Prove the transfer.
               </h1>
-              <p className="mt-8 max-w-xl text-lg leading-8 text-[#C7CEC4]">
+              <p className="mt-8 max-w-xl text-lg leading-8 text-[#CFCFCF]">
                 Configure Arc Testnet USDC movement from the app: fund your wallet, select timing, sign with Circle, and keep the transaction hash.
               </p>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={deployStream}
                   disabled={streaming}
-                  className="h-12 rounded-lg bg-[#B8FF2C] px-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#050607] transition hover:bg-[#F6F2E8] disabled:cursor-wait disabled:opacity-70"
+                  className="h-12 rounded-lg bg-[#ACC6E9] px-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#050505] transition hover:bg-[#EDEDED] disabled:cursor-wait disabled:opacity-70"
                 >
                   {streaming ? "Processing" : "Deploy Stream"}
                 </button>
                 <a
                   href="#fund"
-                  className="grid h-12 place-items-center rounded-lg border border-[#F6F2E8]/15 px-6 text-sm uppercase tracking-[0.18em] text-[#F6F2E8] transition hover:border-[#B8FF2C] hover:text-[#B8FF2C]"
+                  className="grid h-12 place-items-center rounded-lg border border-[#EDEDED]/15 px-6 text-sm uppercase tracking-[0.18em] text-[#EDEDED] transition hover:border-[#ACC6E9] hover:text-[#ACC6E9]"
                 >
                   Get Test USDC
                 </a>
@@ -365,17 +365,17 @@ export default function Home() {
             </div>
 
             <div className="relative flex items-center py-10 lg:py-20" data-reveal>
-              <div className="arc-grid absolute inset-y-16 left-0 right-0 hidden border-x border-[#F6F2E8]/10 lg:block"></div>
+              <div className="arc-grid absolute inset-y-16 left-0 right-0 hidden border-x border-[#EDEDED]/10 lg:block"></div>
               <div className="relative ml-auto w-full">
-                <div className="rounded-lg border border-[#F6F2E8]/14 bg-[#0D1110] p-3 shadow-2xl shadow-black/40">
-                  <div className="grid grid-cols-3 border-b border-[#F6F2E8]/10 text-xs uppercase tracking-[0.2em] text-[#7F8A80]">
+                <div className="rounded-lg border border-[#EDEDED]/14 bg-[#151515] p-3 shadow-2xl shadow-black/40">
+                  <div className="grid grid-cols-3 border-b border-[#EDEDED]/10 text-xs uppercase tracking-[0.2em] text-[#AFAFAF]">
                     <span className="p-3">Wallet</span>
                     <span className="p-3">Type</span>
                     <span className="p-3">State</span>
                   </div>
                   <div className="grid gap-3 p-3">
-                    <div className="rounded-lg bg-[#F6F2E8] p-5 text-[#050607]">
-                      <div className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-[#59645E]">
+                    <div className="rounded-lg bg-[#EDEDED] p-5 text-[#050505]">
+                      <div className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-[#4A4A4A]">
                         <span>{selectedType.label}</span>
                         <span>{amount || "0"} USDC</span>
                       </div>
@@ -388,12 +388,12 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-lg border border-[#F6F2E8]/10 bg-[#151A18] p-5">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#7F8A80]">Connected</p>
+                      <div className="rounded-lg border border-[#EDEDED]/10 bg-[#292929] p-5">
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#AFAFAF]">Connected</p>
                         <p className="mt-5 break-all text-2xl">{circleSession?.displayAddress ?? "Not signed"}</p>
                       </div>
-                      <div className="rounded-lg border border-[#B8FF2C]/35 bg-[#B8FF2C]/10 p-5">
-                        <p className="text-xs uppercase tracking-[0.2em] text-[#B8FF2C]">Status</p>
+                      <div className="rounded-lg border border-[#ACC6E9]/35 bg-[#ACC6E9]/10 p-5">
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#ACC6E9]">Status</p>
                         <p className="mt-5 text-xl leading-7">{streamStatus}</p>
                       </div>
                     </div>
@@ -404,20 +404,20 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="workflow" className="border-b border-[#F6F2E8]/10 px-5 py-24 lg:px-8">
+        <section id="workflow" className="border-b border-[#EDEDED]/10 px-5 py-24 lg:px-8">
           <div className="mx-auto max-w-7xl" data-reveal>
             <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-[#B8FF2C]">Execution sequence</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-[#ACC6E9]">Execution sequence</p>
                 <h2 className="mt-5 max-w-md text-5xl font-medium leading-tight">The user sees every moving part.</h2>
               </div>
-              <div className="grid gap-px overflow-hidden rounded-lg border border-[#F6F2E8]/10 bg-[#F6F2E8]/10">
+              <div className="grid gap-px overflow-hidden rounded-lg border border-[#EDEDED]/10 bg-[#EDEDED]/10">
                 {workflow.map(([step, title, body]) => (
-                  <div key={step} className="grid gap-5 bg-[#0D1110] p-6 md:grid-cols-[7rem_1fr]">
-                    <span className="font-mono text-4xl text-[#B8FF2C]">{step}</span>
+                  <div key={step} className="grid gap-5 bg-[#151515] p-6 md:grid-cols-[7rem_1fr]">
+                    <span className="font-mono text-4xl text-[#ACC6E9]">{step}</span>
                     <div>
                       <h3 className="text-2xl">{title}</h3>
-                      <p className="mt-3 max-w-2xl leading-7 text-[#A6AFA5]">{body}</p>
+                      <p className="mt-3 max-w-2xl leading-7 text-[#AFAFAF]">{body}</p>
                     </div>
                   </div>
                 ))}
@@ -426,29 +426,29 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="fund" className="border-b border-[#F6F2E8]/10 bg-[#F6F2E8] px-5 py-24 text-[#050607] lg:px-8">
+        <section id="fund" className="border-b border-[#EDEDED]/10 bg-[#EDEDED] px-5 py-24 text-[#050505] lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_1fr]" data-reveal>
             <div>
-              <p className="text-xs uppercase tracking-[0.24em] text-[#4F6F14]">Arc Testnet faucet</p>
+              <p className="text-xs uppercase tracking-[0.24em] text-[#2F578C]">Arc Testnet faucet</p>
               <h2 className="mt-5 max-w-xl text-6xl font-medium leading-none">Fund the connected wallet without leaving the flow.</h2>
-              <p className="mt-8 max-w-lg text-lg leading-8 text-[#4D574F]">
+              <p className="mt-8 max-w-lg text-lg leading-8 text-[#292929]">
                 The app requests test USDC for the Circle wallet, and the public Circle Faucet remains one click away when rate limits or console permissions get in the way.
               </p>
             </div>
             <div className="grid content-start gap-3">
-              <div className="rounded-lg border border-[#050607]/12 p-5">
-                <span className="text-xs uppercase tracking-[0.18em] text-[#59645E]">Wallet</span>
+              <div className="rounded-lg border border-[#050505]/12 p-5">
+                <span className="text-xs uppercase tracking-[0.18em] text-[#4A4A4A]">Wallet</span>
                 <p className="mt-4 break-all font-mono text-sm">{circleSession?.address ?? "Connect wallet first"}</p>
               </div>
-              <div className="rounded-lg border border-[#050607]/12 p-5">
-                <span className="text-xs uppercase tracking-[0.18em] text-[#59645E]">Faucet state</span>
+              <div className="rounded-lg border border-[#050505]/12 p-5">
+                <span className="text-xs uppercase tracking-[0.18em] text-[#4A4A4A]">Faucet state</span>
                 <p className="mt-4 leading-7">{faucetStatus}</p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   onClick={requestFaucetTokens}
                   disabled={faucetLoading}
-                  className="h-12 rounded-lg bg-[#050607] px-5 text-sm font-semibold uppercase tracking-[0.16em] text-[#F6F2E8] transition hover:bg-[#1A211E] disabled:cursor-wait disabled:opacity-70"
+                  className="h-12 rounded-lg bg-[#050505] px-5 text-sm font-semibold uppercase tracking-[0.16em] text-[#EDEDED] transition hover:bg-[#292929] disabled:cursor-wait disabled:opacity-70"
                 >
                   {faucetLoading ? "Requesting" : "Request USDC"}
                 </button>
@@ -456,7 +456,7 @@ export default function Home() {
                   href={CIRCLE_FAUCET}
                   target="_blank"
                   rel="noreferrer"
-                  className="grid h-12 place-items-center rounded-lg border border-[#050607]/15 px-5 text-sm font-semibold uppercase tracking-[0.16em] transition hover:border-[#4F6F14]"
+                  className="grid h-12 place-items-center rounded-lg border border-[#050505]/15 px-5 text-sm font-semibold uppercase tracking-[0.16em] transition hover:border-[#2F578C]"
                 >
                   Open Circle Faucet
                 </a>
@@ -467,23 +467,23 @@ export default function Home() {
 
         <section id="deploy" className="px-5 py-24 lg:px-8">
           <div className="mx-auto max-w-7xl" data-reveal>
-            <div className="grid overflow-hidden rounded-lg border border-[#F6F2E8]/12 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="bg-[#B8FF2C] p-8 text-[#050607] md:p-10">
+            <div className="grid overflow-hidden rounded-lg border border-[#EDEDED]/12 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="bg-[#ACC6E9] p-8 text-[#050505] md:p-10">
                 <p className="text-xs uppercase tracking-[0.24em]">Deploy panel</p>
                 <h2 className="mt-6 text-5xl font-medium leading-none">Configure the money rule.</h2>
                 <div className="mt-8 grid gap-4">
                   <label className="grid gap-2 text-sm font-semibold">
                     Recipient
-                    <input value={recipient} onChange={(event) => setRecipient(event.currentTarget.value)} className="h-12 rounded-lg border border-[#050607]/15 bg-[#F6F2E8] px-4 font-mono text-sm outline-none focus:border-[#050607]" />
+                    <input value={recipient} onChange={(event) => setRecipient(event.currentTarget.value)} className="h-12 rounded-lg border border-[#050505]/15 bg-[#EDEDED] px-4 font-mono text-sm outline-none focus:border-[#050505]" />
                   </label>
                   <label className="grid gap-2 text-sm font-semibold">
                     Amount in USDC
-                    <input value={amount} onChange={(event) => setAmount(event.currentTarget.value)} inputMode="decimal" className="h-12 rounded-lg border border-[#050607]/15 bg-[#F6F2E8] px-4 outline-none focus:border-[#050607]" />
+                    <input value={amount} onChange={(event) => setAmount(event.currentTarget.value)} inputMode="decimal" className="h-12 rounded-lg border border-[#050505]/15 bg-[#EDEDED] px-4 outline-none focus:border-[#050505]" />
                   </label>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="grid gap-2 text-sm font-semibold">
                       Start delay
-                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050607]/15 bg-[#F6F2E8]">
+                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050505]/15 bg-[#EDEDED]">
                         <input value={delayValue} onChange={(event) => setDelayValue(event.currentTarget.value)} inputMode="decimal" className="h-12 bg-transparent px-4 outline-none" />
                         <select value={delayUnit} onChange={(event) => setDelayUnit(event.currentTarget.value as TimeUnit)} className="h-12 bg-[#E8E3D6] px-3 outline-none">
                           <option value="minutes">min</option>
@@ -494,7 +494,7 @@ export default function Home() {
                     </label>
                     <label className="grid gap-2 text-sm font-semibold">
                       Time frame
-                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050607]/15 bg-[#F6F2E8]">
+                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050505]/15 bg-[#EDEDED]">
                         <input value={durationValue} onChange={(event) => setDurationValue(event.currentTarget.value)} inputMode="decimal" className="h-12 bg-transparent px-4 outline-none" />
                         <select value={durationUnit} onChange={(event) => setDurationUnit(event.currentTarget.value as TimeUnit)} className="h-12 bg-[#E8E3D6] px-3 outline-none">
                           <option value="minutes">min</option>
@@ -507,7 +507,7 @@ export default function Home() {
                   {streamType === "recurring" && (
                     <label className="grid gap-2 text-sm font-semibold">
                       Repeat every
-                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050607]/15 bg-[#F6F2E8]">
+                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050505]/15 bg-[#EDEDED]">
                         <input value={intervalValue} onChange={(event) => setIntervalValue(event.currentTarget.value)} inputMode="decimal" className="h-12 bg-transparent px-4 outline-none" />
                         <select value={intervalUnit} onChange={(event) => setIntervalUnit(event.currentTarget.value as TimeUnit)} className="h-12 bg-[#E8E3D6] px-3 outline-none">
                           <option value="minutes">min</option>
@@ -521,24 +521,24 @@ export default function Home() {
                 <button
                   onClick={deployStream}
                   disabled={streaming}
-                  className="mt-8 h-12 rounded-lg bg-[#050607] px-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#F6F2E8] transition hover:bg-[#151A18] disabled:cursor-wait disabled:opacity-70"
+                  className="mt-8 h-12 rounded-lg bg-[#050505] px-6 text-sm font-semibold uppercase tracking-[0.18em] text-[#EDEDED] transition hover:bg-[#292929] disabled:cursor-wait disabled:opacity-70"
                 >
                   {circleSession ? "Run Stream" : "Sign In First"}
                 </button>
               </div>
 
-              <div className="grid gap-px bg-[#F6F2E8]/10">
-                <div className="grid gap-3 bg-[#0D1110] p-6">
-                  <span className="text-xs uppercase tracking-[0.2em] text-[#7F8A80]">Transfer type</span>
+              <div className="grid gap-px bg-[#EDEDED]/10">
+                <div className="grid gap-3 bg-[#151515] p-6">
+                  <span className="text-xs uppercase tracking-[0.2em] text-[#AFAFAF]">Transfer type</span>
                   <div className="grid gap-3 md:grid-cols-2">
                     {streamTypes.map((type) => (
                       <button
                         key={type.id}
                         onClick={() => setStreamType(type.id)}
-                        className={`rounded-lg border p-4 text-left transition ${streamType === type.id ? "border-[#B8FF2C] bg-[#B8FF2C]/10" : "border-[#F6F2E8]/10 bg-[#151A18] hover:border-[#B8FF2C]/50"}`}
+                        className={`rounded-lg border p-4 text-left transition ${streamType === type.id ? "border-[#ACC6E9] bg-[#ACC6E9]/10" : "border-[#EDEDED]/10 bg-[#292929] hover:border-[#ACC6E9]/50"}`}
                       >
-                        <span className="text-sm font-semibold text-[#F6F2E8]">{type.label}</span>
-                        <span className="mt-3 block text-sm leading-6 text-[#A6AFA5]">{type.note}</span>
+                        <span className="text-sm font-semibold text-[#EDEDED]">{type.label}</span>
+                        <span className="mt-3 block text-sm leading-6 text-[#AFAFAF]">{type.note}</span>
                       </button>
                     ))}
                   </div>
@@ -549,29 +549,29 @@ export default function Home() {
                   ["Current state", streamStatus],
                   ["Connected wallet", circleSession?.address ?? "Not connected"],
                 ].map(([label, value]) => (
-                  <div key={label} className="grid gap-2 bg-[#0D1110] p-6 md:grid-cols-[10rem_1fr]">
-                    <span className="text-xs uppercase tracking-[0.2em] text-[#7F8A80]">{label}</span>
-                    <span className="break-all font-mono text-sm text-[#F6F2E8]">{value}</span>
+                  <div key={label} className="grid gap-2 bg-[#151515] p-6 md:grid-cols-[10rem_1fr]">
+                    <span className="text-xs uppercase tracking-[0.2em] text-[#AFAFAF]">{label}</span>
+                    <span className="break-all font-mono text-sm text-[#EDEDED]">{value}</span>
                   </div>
                 ))}
 
-                <div className="grid gap-3 bg-[#0D1110] p-6">
-                  <span className="text-xs uppercase tracking-[0.2em] text-[#7F8A80]">Transaction proof</span>
+                <div className="grid gap-3 bg-[#151515] p-6">
+                  <span className="text-xs uppercase tracking-[0.2em] text-[#AFAFAF]">Transaction proof</span>
                   {proofs.length === 0 ? (
-                    <p className="text-sm text-[#A6AFA5]">Hashes appear here after Circle signs and submits each transaction.</p>
+                    <p className="text-sm text-[#AFAFAF]">Hashes appear here after Circle signs and submits each transaction.</p>
                   ) : (
                     proofs.map((proof) => (
-                      <div key={`${proof.label}-${proof.hash ?? proof.status}`} className="rounded-lg border border-[#F6F2E8]/10 bg-[#151A18] p-4">
+                      <div key={`${proof.label}-${proof.hash ?? proof.status}`} className="rounded-lg border border-[#EDEDED]/10 bg-[#292929] p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="text-sm font-semibold">{proof.label}</span>
-                          <span className="text-xs uppercase tracking-[0.16em] text-[#B8FF2C]">{proof.status || "submitted"}</span>
+                          <span className="text-xs uppercase tracking-[0.16em] text-[#ACC6E9]">{proof.status || "submitted"}</span>
                         </div>
                         {proof.hash ? (
-                          <a href={`${ARC_EXPLORER}/tx/${proof.hash}`} target="_blank" rel="noreferrer" className="mt-3 block break-all font-mono text-sm text-[#B8FF2C] hover:text-[#F6F2E8]">
+                          <a href={`${ARC_EXPLORER}/tx/${proof.hash}`} target="_blank" rel="noreferrer" className="mt-3 block break-all font-mono text-sm text-[#ACC6E9] hover:text-[#EDEDED]">
                             {formatHash(proof.hash)}
                           </a>
                         ) : (
-                          <p className="mt-3 text-sm text-[#A6AFA5]">Circle completed the challenge, but no tx hash was returned yet.</p>
+                          <p className="mt-3 text-sm text-[#AFAFAF]">Circle completed the challenge, but no tx hash was returned yet.</p>
                         )}
                       </div>
                     ))
@@ -596,3 +596,4 @@ export default function Home() {
     </div>
   );
 }
+

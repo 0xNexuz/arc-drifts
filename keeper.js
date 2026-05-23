@@ -2,12 +2,17 @@ require('dotenv').config();
 const { ethers } = require('ethers');
 
 // 1. Setup the Network Connection
-const RPC_URL = process.env.ARC_RPC_URL || "https://rpc-testnet.arc.xyz"; // ARC Testnet
+const RPC_URL = process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network"; // Arc Testnet
 const PRIVATE_KEY = process.env.PRIVATE_KEY; 
-const CONTRACT_ADDRESS = "0xca023e888478c8ADa406b2dfAffC171dA3d0Ab73"; // Put your contract address here
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ARC_DRIFT_CONTRACT_ADDRESS || process.env.CONTRACT_ADDRESS;
 
 if (!PRIVATE_KEY) {
-    console.error("❌ No private key found in .env file!");
+    console.error("No private key found in .env file!");
+    process.exit(1);
+}
+
+if (!CONTRACT_ADDRESS) {
+    console.error("No contract address found in .env file!");
     process.exit(1);
 }
 
@@ -49,3 +54,4 @@ async function runKeeper() {
 
 // Execute the bot
 runKeeper();
+

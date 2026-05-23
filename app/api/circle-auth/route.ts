@@ -33,6 +33,7 @@ export async function POST(req: Request) {
 
     let userToken: string | undefined;
     let encryptionKey: string | undefined;
+    let createdUser = false;
 
     try {
       const response = await circleClient.createUserToken({ userId: email });
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
     } catch {
       console.log(`Creating new Circle wallet identity for ${email}...`);
       await circleClient.createUser({ userId: email });
+      createdUser = true;
       const response = await circleClient.createUserToken({ userId: email });
       userToken = response.data?.userToken;
       encryptionKey = response.data?.encryptionKey;
@@ -70,17 +72,25 @@ export async function POST(req: Request) {
       });
     }
 
-    const createWalletResponse = await circleClient.createUserPinWithWallets({
-      userToken,
-      idempotencyKey: crypto.randomUUID(),
-      blockchains: [BLOCKCHAIN],
-      accountType: ACCOUNT_TYPE,
-    });
+    const createWalletResponse = createdUser
+      ? await circleClient.createUserPinWithWallets({
+          userToken,
+          idempotencyKey: crypto.randomUUID(),
+          blockchains: [BLOCKCHAIN],
+          accountType: ACCOUNT_TYPE,
+        })
+      : await circleClient.createWallet({
+          userToken,
+          idempotencyKey: crypto.randomUUID(),
+          blockchains: [BLOCKCHAIN],
+          accountType: ACCOUNT_TYPE,
+        });
 
     return NextResponse.json({
       userToken,
       encryptionKey,
       challengeId: createWalletResponse.data?.challengeId,
+      challengeType: createdUser ? "SET_PIN_AND_CREATE_WALLET" : "CREATE_WALLET",
     });
   } catch (error: unknown) {
     console.error("Circle Auth Error:", error);

@@ -2,11 +2,15 @@ import { ethers } from "ethers";
 import abi from "../abi.json"; // Adjust this path to wherever you saved abi.json
 
 // Pulling from your .env
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ARC_DRIFT_CONTRACT_ADDRESS;
 
 export const getContract = async () => {
   if (!window.ethereum) {
     throw new Error("No crypto wallet found. Please install MetaMask.");
+  }
+
+  if (!CONTRACT_ADDRESS) {
+    throw new Error("NEXT_PUBLIC_ARC_DRIFT_CONTRACT_ADDRESS is not configured.");
   }
 
   // Connect to MetaMask

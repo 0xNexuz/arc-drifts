@@ -6,13 +6,13 @@ html {
 }
 
 :root {
-  --arc-ink: #050607;
-  --arc-panel: #0d1110;
-  --arc-panel-2: #151a18;
-  --arc-cream: #f6f2e8;
-  --arc-muted: #a6afa5;
-  --arc-green: #b8ff2c;
-  --arc-emerald: #16d97e;
+  --arc-ink: #050505;
+  --arc-panel: #151515;
+  --arc-panel-2: #292929;
+  --arc-cream: #ededed;
+  --arc-muted: #afafaf;
+  --arc-blue: #acc6e9;
+  --arc-blue-soft: #d5e0e7;
   --background: var(--arc-ink);
   --foreground: var(--arc-cream);
 }
@@ -39,8 +39,8 @@ body {
 
 .arc-grid {
   background-image:
-    linear-gradient(rgba(184, 255, 44, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(184, 255, 44, 0.08) 1px, transparent 1px);
+    linear-gradient(rgba(172, 198, 233, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(172, 198, 233, 0.08) 1px, transparent 1px);
   background-size: 44px 44px;
   mask-image: linear-gradient(to bottom, transparent, black 14%, black 86%, transparent);
 }
@@ -70,3 +70,4 @@ body {
     transition: none;
   }
 }
+

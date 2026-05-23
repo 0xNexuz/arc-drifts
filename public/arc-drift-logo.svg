@@ -2,14 +2,15 @@
   <defs>
     <linearGradient id="arcAccent" x1="72" y1="64" x2="432" y2="448" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="0.5" stop-color="#B8FF2C"/>
-      <stop offset="1" stop-color="#16D97E"/>
+      <stop offset="0.5" stop-color="#ACC6E9"/>
+      <stop offset="1" stop-color="#D5E0E7"/>
     </linearGradient>
   </defs>
 
-  <rect x="32" y="32" width="448" height="448" rx="132" fill="#050607"/>
-  <rect x="58" y="58" width="396" height="396" rx="112" fill="none" stroke="#F6F2E8" stroke-opacity="0.14" stroke-width="2"/>
+  <rect x="32" y="32" width="448" height="448" rx="132" fill="#050505"/>
+  <rect x="58" y="58" width="396" height="396" rx="112" fill="none" stroke="#EDEDED" stroke-opacity="0.14" stroke-width="2"/>
   <path d="M156 326 246 142h38l88 184h-56l-18-42h-69l20-44h31l-16-38-58 124H156Z" fill="url(#arcAccent)"/>
-  <path d="M164 366h184" stroke="#F6F2E8" stroke-width="32" stroke-linecap="round"/>
-  <circle cx="378" cy="134" r="24" fill="#B8FF2C"/>
+  <path d="M164 366h184" stroke="#EDEDED" stroke-width="32" stroke-linecap="round"/>
+  <circle cx="378" cy="134" r="24" fill="#ACC6E9"/>
 </svg>
+
