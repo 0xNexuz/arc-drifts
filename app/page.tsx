@@ -7,7 +7,7 @@ import LoginModal, { type CircleSession } from "./components/LoginModal";
 
 const RECIPIENT_ADDRESS = "0x7034aF41397893321c4458ABB3B98F6c67065FaB";
 const ARC_EXPLORER = "https://testnet.arcscan.app";
-const CIRCLE_FAUCET = "https://faucet.circle.com";
+const CIRCLE_FAUCET = "https://faucet.circle.com/?allow=true";
 
 type StreamType = "streaming" | "delayed" | "cancelable" | "recurring";
 type TimeUnit = "minutes" | "hours" | "days";
@@ -51,7 +51,7 @@ const timeMultipliers: Record<TimeUnit, number> = {
 
 const workflow = [
   ["01", "Connect", "Email login creates or restores a Circle SCA wallet on Arc Testnet."],
-  ["02", "Fund", "Request Arc Testnet USDC from the in-app faucet action or open Circle Faucet."],
+  ["02", "Fund", "Copy your wallet and open Circle Faucet for Arc Testnet USDC."],
   ["03", "Configure", "Choose recipient, USDC amount, transfer type, delay, and duration."],
   ["04", "Prove", "Circle returns transaction proof for approval and drift creation."],
 ];
@@ -149,7 +149,6 @@ export default function Home() {
   const [circleSession, setCircleSession] = useState<CircleSession | null>(null);
   const [streamStatus, setStreamStatus] = useState("Ready for wallet");
   const [streaming, setStreaming] = useState(false);
-  const [faucetLoading, setFaucetLoading] = useState(false);
   const [faucetStatus, setFaucetStatus] = useState("Request test USDC after connecting.");
   const [recipient, setRecipient] = useState(RECIPIENT_ADDRESS);
   const [amount, setAmount] = useState("1");
@@ -200,33 +199,20 @@ export default function Home() {
     setFaucetStatus("Request test USDC after connecting.");
   }
 
-  async function requestFaucetTokens() {
+  async function openFaucet() {
     if (!circleSession) {
       setShowLogin(true);
       return;
     }
 
-    setFaucetLoading(true);
-    setFaucetStatus("Requesting Arc Testnet USDC");
-
     try {
-      const res = await fetch("/api/request-faucet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: circleSession.address, usdc: true, native: false }),
-      });
-      const data = await res.json() as { message?: string; error?: string };
-
-      if (!res.ok) {
-        throw new Error(data.error ?? "Faucet request failed");
-      }
-
-      setFaucetStatus(data.message ?? "Faucet request submitted");
-    } catch (error: unknown) {
-      setFaucetStatus(`${getErrorMessage(error)}. You can still use Circle Faucet manually.`);
-    } finally {
-      setFaucetLoading(false);
+      await navigator.clipboard.writeText(circleSession.address);
+      setFaucetStatus("Wallet copied. In Circle Faucet, choose Arc Testnet and paste the address.");
+    } catch {
+      setFaucetStatus("Open Circle Faucet, choose Arc Testnet, and paste your connected wallet address.");
     }
+
+    window.open(CIRCLE_FAUCET, "_blank", "noopener,noreferrer");
   }
 
   async function deployStream() {
@@ -432,7 +418,7 @@ export default function Home() {
               <p className="text-xs uppercase tracking-[0.24em] text-[#2F578C]">Arc Testnet faucet</p>
               <h2 className="mt-5 max-w-xl text-6xl font-medium leading-none">Fund the connected wallet without leaving the flow.</h2>
               <p className="mt-8 max-w-lg text-lg leading-8 text-[#292929]">
-                The app requests test USDC for the Circle wallet, and the public Circle Faucet remains one click away when rate limits or console permissions get in the way.
+                Circle Faucet is the supported path for Arc Testnet USDC. The app copies your wallet, then opens the faucet so you can choose Arc Testnet and claim.
               </p>
             </div>
             <div className="grid content-start gap-3">
@@ -446,11 +432,10 @@ export default function Home() {
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
-                  onClick={requestFaucetTokens}
-                  disabled={faucetLoading}
+                  onClick={openFaucet}
                   className="h-12 rounded-lg bg-[#050505] px-5 text-sm font-semibold uppercase tracking-[0.16em] text-[#EDEDED] transition hover:bg-[#292929] disabled:cursor-wait disabled:opacity-70"
                 >
-                  {faucetLoading ? "Requesting" : "Request USDC"}
+                  Copy & Open Faucet
                 </button>
                 <a
                   href={CIRCLE_FAUCET}
@@ -588,7 +573,7 @@ export default function Home() {
           onLoginSuccess={(session) => {
             setCircleSession(session);
             setStreamStatus("Wallet connected");
-            setFaucetStatus(`Ready to request test USDC for ${formatAddress(session.address)}.`);
+            setFaucetStatus(`Ready to copy ${formatAddress(session.address)} and open Circle Faucet.`);
             setShowLogin(false);
           }}
         />
