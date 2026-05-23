@@ -133,12 +133,12 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-[#0f1523] border border-white/10 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#7B5EFA] rounded-full blur-[80px] opacity-30"></div>
-        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#3B82F6] rounded-full blur-[80px] opacity-30"></div>
+      <div className="w-full max-w-md bg-[#0D1110] border border-white/10 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#B8FF2C] rounded-full blur-[80px] opacity-30"></div>
+        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-[#16D97E] rounded-full blur-[80px] opacity-30"></div>
 
         <div className="relative z-10 flex flex-col items-center text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B5EFA] to-[#3B82F6] flex items-center justify-center shadow-lg mb-6">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#B8FF2C] to-[#16D97E] flex items-center justify-center shadow-lg mb-6">
             <div className="w-4 h-5 border-2 border-white rounded-t-full border-b-0 mt-1"></div>
           </div>
 
@@ -162,13 +162,13 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
                 placeholder="magnus@vibecoder.com"
                 value={email}
                 onChange={(event) => setEmail(event.currentTarget.value)}
-                className="w-full bg-black/40 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-[#7B5EFA] focus:ring-1 focus:ring-[#7B5EFA] transition-all"
+                className="w-full bg-black/40 border border-white/10 text-white p-4 rounded-xl focus:outline-none focus:border-[#B8FF2C] focus:ring-1 focus:ring-[#B8FF2C] transition-all"
                 required
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#7B5EFA] to-[#3B82F6] text-white font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(123,94,250,0.3)] hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] disabled:opacity-50"
+                className="w-full bg-gradient-to-r from-[#B8FF2C] to-[#16D97E] text-white font-bold py-4 rounded-xl transition-all shadow-[0_0_20px_rgba(184,255,44,0.24)] hover:shadow-[0_0_30px_rgba(22,217,126,0.36)] disabled:opacity-50"
               >
                 {loading ? "Authenticating..." : "Continue with Email"}
               </button>
@@ -177,7 +177,7 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
 
           {step === 2 && (
             <div className="w-full flex flex-col items-center py-6">
-              <div className="w-10 h-10 border-4 border-[#7B5EFA] border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-[#B8FF2C] border-t-transparent rounded-full animate-spin"></div>
               <p className="text-gray-400 text-xs tracking-widest uppercase mt-6 font-mono">Awaiting Signature</p>
             </div>
           )}
@@ -186,3 +186,4 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
     </div>
   );
 }
+
