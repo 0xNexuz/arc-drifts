@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { isAddress, parseUnits } from "viem";
 import LoginModal, { type CircleSession } from "./components/LoginModal";
@@ -9,6 +9,7 @@ const RECIPIENT_ADDRESS = "0x7034aF41397893321c4458ABB3B98F6c67065FaB";
 const ARC_EXPLORER = "https://testnet.arcscan.app";
 const CIRCLE_FAUCET = "https://faucet.circle.com/?allow=true";
 const SESSION_STORAGE_KEY = "arc-drift-circle-session";
+const STREAM_STORAGE_KEY = "arc-drift-stream-window";
 
 type StreamType = "streaming" | "delayed" | "cancelable" | "recurring";
 type TimeUnit = "minutes" | "hours" | "days";
@@ -55,6 +56,17 @@ type Notice = {
   title: string;
   body?: string;
   tone: "info" | "success" | "warning" | "error";
+};
+
+type StoredStreamWindow = {
+  id: string;
+  startTime: number;
+  endTime: number;
+  ruleType: StreamType;
+  interval: number;
+  amount: string;
+  recipient: string;
+  completedNotified: boolean;
 };
 
 const streamTypes: Array<{
@@ -126,6 +138,13 @@ function formatBalance(value: string | null) {
   return parsed.toLocaleString(undefined, {
     maximumFractionDigits: 6,
     minimumFractionDigits: parsed > 0 && parsed < 0.01 ? 6 : 2,
+  });
+}
+
+function formatWindowTime(timestamp: number) {
+  return new Date(timestamp * 1000).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
   });
 }
 
@@ -274,6 +293,43 @@ function readStoredSession() {
   return null;
 }
 
+function readStoredStreamWindow() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawWindow = window.localStorage.getItem(STREAM_STORAGE_KEY);
+    if (!rawWindow) {
+      return null;
+    }
+
+    const streamWindow = JSON.parse(rawWindow) as StoredStreamWindow;
+
+    if (
+      streamWindow.id &&
+      Number.isFinite(streamWindow.startTime) &&
+      Number.isFinite(streamWindow.endTime) &&
+      streamWindow.endTime >= streamWindow.startTime &&
+      streamTypes.some((type) => type.id === streamWindow.ruleType)
+    ) {
+      return streamWindow;
+    }
+  } catch {
+    window.localStorage.removeItem(STREAM_STORAGE_KEY);
+  }
+
+  return null;
+}
+
+function writeStoredStreamWindow(streamWindow: StoredStreamWindow) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(STREAM_STORAGE_KEY, JSON.stringify(streamWindow));
+}
+
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [circleSession, setCircleSession] = useState<CircleSession | null>(() => readStoredSession());
@@ -299,12 +355,7 @@ export default function Home() {
   const [proofs, setProofs] = useState<TxProof[]>([]);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [balanceStatus, setBalanceStatus] = useState("Connect wallet to view USDC");
-  const [lastStreamWindow, setLastStreamWindow] = useState<{
-    startTime: number;
-    endTime: number;
-    ruleType: StreamType;
-    interval: number;
-  } | null>(null);
+  const [lastStreamWindow, setLastStreamWindow] = useState<StoredStreamWindow | null>(() => readStoredStreamWindow());
   const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1000));
   const [notices, setNotices] = useState<Notice[]>([]);
 
@@ -383,14 +434,45 @@ export default function Home() {
   const progressLabel = lastStreamWindow
     ? `${Math.round(progressPercent)}% unlocked`
     : "No active stream preview";
+  const activeAmount = lastStreamWindow?.amount ?? amount;
+  const activeRecipient = lastStreamWindow?.recipient ?? recipient;
+  const activeType = lastStreamWindow
+    ? streamTypes.find((type) => type.id === lastStreamWindow.ruleType) ?? selectedType
+    : selectedType;
+  const activeWindowLabel = lastStreamWindow
+    ? `${formatWindowTime(lastStreamWindow.startTime)} to ${formatWindowTime(lastStreamWindow.endTime)}`
+    : `${delayValue} ${delayUnit} delay, ${durationValue} ${durationUnit} duration${
+        selectedType.id === "recurring" ? `, every ${intervalValue} ${intervalUnit}` : ""
+      }`;
 
-  function notify(title: string, body: string | undefined, tone: Notice["tone"] = "info") {
+  const notify = useCallback((title: string, body: string | undefined, tone: Notice["tone"] = "info") => {
     const id = crypto.randomUUID();
     setNotices((current) => [...current, { id, title, body, tone }].slice(-4));
     window.setTimeout(() => {
       setNotices((current) => current.filter((notice) => notice.id !== id));
     }, 6500);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!lastStreamWindow || lastStreamWindow.completedNotified || progressPercent < 100) {
+      return;
+    }
+
+    const completedWindow = { ...lastStreamWindow, completedNotified: true };
+    const timer = window.setTimeout(() => {
+      writeStoredStreamWindow(completedWindow);
+      setLastStreamWindow((current) => (
+        current?.id === completedWindow.id ? completedWindow : current
+      ));
+      notify(
+        "Stream complete",
+        `${completedWindow.amount} USDC has reached the end of its ${completedWindow.ruleType} window.`,
+        "success",
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [lastStreamWindow, notify, progressPercent]);
 
   function dismissNotice(id: string) {
     setNotices((current) => current.filter((notice) => notice.id !== id));
@@ -495,12 +577,18 @@ export default function Home() {
         throw new Error("Recurring interval cannot be longer than the total time frame");
       }
 
-      setLastStreamWindow({
+      const nextStreamWindow: StoredStreamWindow = {
+        id: crypto.randomUUID(),
         startTime,
         endTime,
         interval: intervalSeconds || durationSeconds,
         ruleType: selectedType.id,
-      });
+        amount,
+        recipient,
+        completedNotified: false,
+      };
+
+      setLastStreamWindow(nextStreamWindow);
 
       const approvalChallenge = await createChallenge("/api/approve-usdc-challenge", {
         userToken: circleSession.userToken,
@@ -569,11 +657,13 @@ export default function Home() {
         driftProof.txHash ? "Transaction hash is available in the proof panel." : "Circle accepted the transaction; hash is indexing.",
         driftProof.txHash ? "success" : "warning",
       );
+      writeStoredStreamWindow(nextStreamWindow);
       await refreshUsdcBalance(circleSession);
     } catch (err: unknown) {
       console.error("Tx Error:", err);
       const message = getErrorMessage(err);
       setStreamStatus(message);
+      setLastStreamWindow(readStoredStreamWindow());
       notify("Transaction failed", message, "error");
     } finally {
       setStreaming(false);
@@ -654,8 +744,8 @@ export default function Home() {
                   <div className="grid gap-3 p-3">
                     <div className="rounded-lg bg-[#EDEDED] p-5 text-[#050505]">
                       <div className="flex flex-wrap items-center justify-between gap-3 text-xs uppercase tracking-[0.2em] text-[#4A4A4A]">
-                        <span>{selectedType.label}</span>
-                        <span>{amount || "0"} USDC</span>
+                        <span>{activeType.label}</span>
+                        <span>{activeAmount || "0"} USDC</span>
                       </div>
                       <div className="mt-8">
                         <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-[#4A4A4A]">
@@ -667,10 +757,9 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="mt-8 grid gap-2 text-sm text-[#303832]">
-                        <span>Recipient: {isAddress(recipient) ? formatAddress(recipient) : "Invalid address"}</span>
+                        <span>Recipient: {isAddress(activeRecipient) ? formatAddress(activeRecipient) : "Invalid address"}</span>
                         <span>
-                          Window: {delayValue} {delayUnit} delay, {durationValue} {durationUnit} duration
-                          {selectedType.id === "recurring" ? `, every ${intervalValue} ${intervalUnit}` : ""}
+                          Window: {activeWindowLabel}
                         </span>
                       </div>
                     </div>
@@ -919,6 +1008,7 @@ export default function Home() {
           onLoginSuccess={(session) => {
             setCircleSession(session);
             window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+            setLastStreamWindow(readStoredStreamWindow());
             setStreamStatus("Wallet connected");
             setFaucetStatus(`Ready to copy ${formatAddress(session.address)} and open Circle Faucet.`);
             notify("Wallet connected", `${formatAddress(session.address)} is ready on Arc Testnet.`, "success");
