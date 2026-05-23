@@ -34,13 +34,13 @@ type TxProof = {
 const streamTypes: Array<{
   id: StreamType;
   label: string;
-  ruleType: number | null;
+  ruleType: number;
   note: string;
 }> = [
   { id: "streaming", label: "Streaming payment", ruleType: 0, note: "Linear unlock between start and end." },
   { id: "delayed", label: "Delayed transfer", ruleType: 1, note: "Full amount unlocks after the deadline." },
-  { id: "cancelable", label: "Cancellable transfer", ruleType: 2, note: "Uses the current cancelable enum; cancel action still needs the contract upgrade." },
-  { id: "recurring", label: "Recurring payment", ruleType: null, note: "Needs a recurring scheduler in the contract before it can run live." },
+  { id: "cancelable", label: "Cancellable transfer", ruleType: 2, note: "Sender can cancel before the deadline and recover unclaimed funds." },
+  { id: "recurring", label: "Recurring payment", ruleType: 3, note: "Unlocks in fixed installments on the repeat interval." },
 ];
 
 const timeMultipliers: Record<TimeUnit, number> = {
@@ -158,6 +158,8 @@ export default function Home() {
   const [durationUnit, setDurationUnit] = useState<TimeUnit>("hours");
   const [delayValue, setDelayValue] = useState("0");
   const [delayUnit, setDelayUnit] = useState<TimeUnit>("minutes");
+  const [intervalValue, setIntervalValue] = useState("1");
+  const [intervalUnit, setIntervalUnit] = useState<TimeUnit>("hours");
   const [proofs, setProofs] = useState<TxProof[]>([]);
 
   const selectedType = useMemo(
@@ -233,11 +235,6 @@ export default function Home() {
       return;
     }
 
-    if (selectedType.ruleType === null) {
-      setStreamStatus("Recurring payments need a contract upgrade before live deployment.");
-      return;
-    }
-
     if (!isAddress(recipient)) {
       setStreamStatus("Recipient address is invalid");
       return;
@@ -259,9 +256,14 @@ export default function Home() {
       const delaySeconds = secondsFrom(delayValue, delayUnit);
       const durationSeconds = Math.max(60, secondsFrom(durationValue, durationUnit));
       const startTime = now + delaySeconds;
-      const endTime = selectedType.id === "delayed" || selectedType.id === "cancelable"
-        ? startTime + durationSeconds
-        : startTime + durationSeconds;
+      const endTime = startTime + durationSeconds;
+      const intervalSeconds = selectedType.id === "recurring"
+        ? Math.max(60, secondsFrom(intervalValue, intervalUnit))
+        : 0;
+
+      if (selectedType.id === "recurring" && intervalSeconds > durationSeconds) {
+        throw new Error("Recurring interval cannot be longer than the total time frame");
+      }
 
       const approvalChallenge = await createChallenge("/api/approve-usdc-challenge", {
         userToken: circleSession.userToken,
@@ -281,6 +283,7 @@ export default function Home() {
         amount: parsedAmount.toString(),
         startTime,
         endTime,
+        interval: intervalSeconds,
         ruleType: selectedType.ruleType,
       });
 
@@ -378,7 +381,10 @@ export default function Home() {
                       </div>
                       <div className="mt-8 grid gap-2 text-sm text-[#303832]">
                         <span>Recipient: {isAddress(recipient) ? formatAddress(recipient) : "Invalid address"}</span>
-                        <span>Window: {delayValue} {delayUnit} delay, {durationValue} {durationUnit} duration</span>
+                        <span>
+                          Window: {delayValue} {delayUnit} delay, {durationValue} {durationUnit} duration
+                          {selectedType.id === "recurring" ? `, every ${intervalValue} ${intervalUnit}` : ""}
+                        </span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -498,6 +504,19 @@ export default function Home() {
                       </div>
                     </label>
                   </div>
+                  {streamType === "recurring" && (
+                    <label className="grid gap-2 text-sm font-semibold">
+                      Repeat every
+                      <div className="grid grid-cols-[1fr_auto] overflow-hidden rounded-lg border border-[#050607]/15 bg-[#F6F2E8]">
+                        <input value={intervalValue} onChange={(event) => setIntervalValue(event.currentTarget.value)} inputMode="decimal" className="h-12 bg-transparent px-4 outline-none" />
+                        <select value={intervalUnit} onChange={(event) => setIntervalUnit(event.currentTarget.value as TimeUnit)} className="h-12 bg-[#E8E3D6] px-3 outline-none">
+                          <option value="minutes">min</option>
+                          <option value="hours">hr</option>
+                          <option value="days">day</option>
+                        </select>
+                      </div>
+                    </label>
+                  )}
                 </div>
                 <button
                   onClick={deployStream}

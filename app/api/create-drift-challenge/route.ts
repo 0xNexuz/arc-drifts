@@ -9,6 +9,7 @@ type CreateDriftRequest = {
   amount?: string;
   startTime?: number;
   endTime?: number;
+  interval?: number;
   ruleType?: number;
 };
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "CIRCLE_API_KEY is not configured" }, { status: 500 });
     }
 
-    if (!body.userToken || !body.walletId || !body.recipient || !body.amount || body.startTime === undefined || body.endTime === undefined || body.ruleType === undefined) {
+    if (!body.userToken || !body.walletId || !body.recipient || !body.amount || body.startTime === undefined || body.endTime === undefined || body.interval === undefined || body.ruleType === undefined) {
       return NextResponse.json({ error: "Missing drift transaction fields" }, { status: 400 });
     }
 
@@ -41,6 +42,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid stream timeframe" }, { status: 400 });
     }
 
+    if (!Number.isInteger(body.interval) || body.interval < 0) {
+      return NextResponse.json({ error: "Invalid recurring interval" }, { status: 400 });
+    }
+
+    if (body.ruleType === 3 && body.interval === 0) {
+      return NextResponse.json({ error: "Recurring payments need a repeat interval" }, { status: 400 });
+    }
+
+    if (body.ruleType !== 3 && body.interval !== 0) {
+      return NextResponse.json({ error: "Repeat interval is only supported for recurring payments" }, { status: 400 });
+    }
+
     const circleClient = initiateUserControlledWalletsClient({
       apiKey: process.env.CIRCLE_API_KEY,
     });
@@ -49,12 +62,13 @@ export async function POST(req: Request) {
       userToken: body.userToken,
       walletId: body.walletId,
       contractAddress,
-      abiFunctionSignature: "createDrift(address,uint256,uint256,uint256,uint8)",
+      abiFunctionSignature: "createDrift(address,uint256,uint256,uint256,uint256,uint8)",
       abiParameters: [
         body.recipient,
         body.amount,
         body.startTime.toString(),
         body.endTime.toString(),
+        body.interval.toString(),
         body.ruleType.toString(),
       ],
       fee: {

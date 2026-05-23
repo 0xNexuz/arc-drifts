@@ -7,6 +7,7 @@ const ARC_DRIFT_ABI = [
       { internalType: "uint256", name: "_amount", type: "uint256" },
       { internalType: "uint256", name: "_startTime", type: "uint256" },
       { internalType: "uint256", name: "_endTime", type: "uint256" },
+      { internalType: "uint256", name: "_interval", type: "uint256" },
       { internalType: "uint8", name: "_ruleType", type: "uint8" },
     ],
     name: "createDrift",
@@ -21,11 +22,12 @@ export function encodeCreateDriftCall(
   amount: bigint,
   startTime: bigint,
   endTime: bigint,
+  interval: bigint,
   ruleType: number,
 ) {
   return encodeFunctionData({
     abi: ARC_DRIFT_ABI,
     functionName: "createDrift",
-    args: [recipient, amount, startTime, endTime, ruleType],
+    args: [recipient, amount, startTime, endTime, interval, ruleType],
   });
 }
