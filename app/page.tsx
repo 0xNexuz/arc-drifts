@@ -38,6 +38,7 @@ type CircleChallengeProof = {
   txHash?: string;
   signedTransaction?: string;
   transactionId?: string;
+  proofPending?: boolean;
 };
 
 type TxProof = {
@@ -46,6 +47,7 @@ type TxProof = {
   transactionId?: string;
   status?: string;
   type?: string;
+  proofPending?: boolean;
 };
 
 const streamTypes: Array<{
@@ -187,28 +189,33 @@ async function lookupTransactionProof(
   contractAddress: string | undefined,
   createdAfter: string,
 ) {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const res = await fetch("/api/transaction-proof", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userToken: session.userToken,
-        walletId: session.walletId,
-        contractAddress,
-        createdAfter,
-      }),
-    });
-    const data = await res.json() as TransactionProofResponse;
+  try {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const res = await fetch("/api/transaction-proof", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userToken: session.userToken,
+          walletId: session.walletId,
+          contractAddress,
+          createdAfter,
+        }),
+      });
+      const data = await res.json() as TransactionProofResponse;
 
-    if (!res.ok) {
-      throw new Error(data.error ?? "Failed to fetch transaction proof");
+      if (res.ok && (data.txHash || data.transactionId)) {
+        return data;
+      }
+
+      if (!res.ok) {
+        console.warn("Transaction proof lookup failed:", data.error ?? res.statusText);
+        return null;
+      }
+
+      await wait(attempt < 4 ? 1500 : 2500);
     }
-
-    if (data.txHash || data.transactionId) {
-      return data;
-    }
-
-    await wait(attempt < 4 ? 1500 : 2500);
+  } catch (error) {
+    console.warn("Transaction proof lookup failed:", error);
   }
 
   return null;
@@ -233,6 +240,7 @@ async function completeChallengeWithProof(
     txHash: lookup?.txHash ?? undefined,
     transactionId: lookup?.transactionId ?? undefined,
     status: lookup?.state ?? proof.status,
+    proofPending: !lookup?.txHash && !lookup?.transactionId,
   };
 }
 
@@ -484,6 +492,7 @@ export default function Home() {
         transactionId: approvalProof.transactionId,
         status: approvalProof.status,
         type: approvalProof.type,
+        proofPending: approvalProof.proofPending,
       }]);
 
       setStreamStatus("Preparing stream contract call");
@@ -510,11 +519,16 @@ export default function Home() {
           label: selectedType.label,
           hash: driftProof.txHash,
           transactionId: driftProof.transactionId,
-          status: driftProof.status,
-          type: driftProof.type,
-        },
-      ]);
-      setStreamStatus("Stream submitted with transaction proof");
+            status: driftProof.status,
+            type: driftProof.type,
+            proofPending: driftProof.proofPending,
+          },
+        ]);
+      setStreamStatus(
+        approvalProof.proofPending || driftProof.proofPending
+          ? "Stream submitted; proof is still indexing"
+          : "Stream submitted with transaction proof",
+      );
       await refreshUsdcBalance(circleSession);
     } catch (err: unknown) {
       console.error("Tx Error:", err);
@@ -812,7 +826,11 @@ export default function Home() {
                         ) : proof.transactionId ? (
                           <p className="mt-3 break-all font-mono text-sm text-[#AFAFAF]">Circle transaction: {proof.transactionId}</p>
                         ) : (
-                          <p className="mt-3 text-sm text-[#AFAFAF]">Circle accepted the challenge. Hash is still indexing; refresh in a few seconds.</p>
+                          <p className="mt-3 text-sm text-[#AFAFAF]">
+                            {proof.proofPending
+                              ? "Circle accepted the challenge. Hash is still indexing."
+                              : "Circle accepted the challenge. Proof is pending."}
+                          </p>
                         )}
                       </div>
                     ))
