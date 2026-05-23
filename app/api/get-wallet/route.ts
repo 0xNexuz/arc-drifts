@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 
+const BLOCKCHAIN = "ARC-TESTNET";
+
 type CircleWallet = {
   id?: string;
   walletId?: string;
   address?: string;
   blockchain?: string;
 };
+
+function walletHasAddress(wallet: CircleWallet) {
+  return Boolean(wallet.address && (wallet.id || wallet.walletId));
+}
 
 export async function POST(req: Request) {
   try {
@@ -33,14 +39,20 @@ export async function POST(req: Request) {
     }
 
     const data = await res.json() as { data?: { wallets?: CircleWallet[] } };
-    const wallet = data.data?.wallets?.find((candidate) => (
-      candidate.blockchain === "ARC-TESTNET" && Boolean(candidate.address)
+    const wallets = data.data?.wallets ?? [];
+    const wallet = wallets.find((candidate) => (
+      candidate.blockchain === BLOCKCHAIN && walletHasAddress(candidate)
     ));
 
     return NextResponse.json({
       address: wallet?.address ?? null,
       walletId: wallet?.id ?? wallet?.walletId ?? null,
       blockchain: wallet?.blockchain ?? null,
+      walletCount: wallets.length,
+      availableBlockchains: wallets
+        .filter(walletHasAddress)
+        .map((candidate) => candidate.blockchain)
+        .filter(Boolean),
     });
   } catch (error: unknown) {
     console.error("Wallet Fetch Error:", error);

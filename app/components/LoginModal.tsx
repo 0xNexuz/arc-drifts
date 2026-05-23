@@ -25,6 +25,9 @@ type CircleAuthResponse = {
 type WalletResponse = {
   walletId?: string | null;
   address?: string | null;
+  blockchain?: string | null;
+  walletCount?: number;
+  availableBlockchains?: string[];
   error?: string;
 };
 
@@ -32,11 +35,34 @@ function formatAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function getClientErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const maybeMessage = "message" in error ? error.message : undefined;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      return maybeMessage;
+    }
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "Login failed";
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function executeCircleChallenge(sdk: W3SSdk, challengeId: string) {
   return new Promise<void>((resolve, reject) => {
     sdk.execute(challengeId, (error, result) => {
       if (error) {
-        reject(error);
+        reject(new Error(getClientErrorMessage(error)));
         return;
       }
 
@@ -48,6 +74,42 @@ function executeCircleChallenge(sdk: W3SSdk, challengeId: string) {
       resolve();
     });
   });
+}
+
+async function fetchWallet(userToken: string) {
+  const walletRes = await fetch("/api/get-wallet", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userToken }),
+  });
+
+  const walletData = await walletRes.json() as WalletResponse;
+
+  if (!walletRes.ok) {
+    throw new Error(walletData.error ?? "Failed to fetch Circle wallet");
+  }
+
+  return walletData;
+}
+
+async function fetchWalletWithRetry(userToken: string) {
+  let latestWallet: WalletResponse | null = null;
+
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    latestWallet = await fetchWallet(userToken);
+
+    if (latestWallet.address && latestWallet.walletId) {
+      return latestWallet;
+    }
+
+    await wait(attempt < 4 ? 1200 : 2200);
+  }
+
+  const seenBlockchains = latestWallet?.availableBlockchains?.length
+    ? ` Seen wallets: ${latestWallet.availableBlockchains.join(", ")}.`
+    : "";
+
+  throw new Error(`Circle finished PIN setup, but the Arc Testnet wallet is still provisioning. Wait a few seconds and try signing in again.${seenBlockchains}`);
 }
 
 export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (session: CircleSession) => void }) {
@@ -96,17 +158,7 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
         await executeCircleChallenge(sdk, data.challengeId);
       }
 
-      const walletRes = await fetch("/api/get-wallet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userToken: data.userToken }),
-      });
-
-      const walletData = await walletRes.json() as WalletResponse;
-
-      if (!walletRes.ok) {
-        throw new Error(walletData.error ?? "Failed to fetch Circle wallet");
-      }
+      const walletData = await fetchWalletWithRetry(data.userToken);
 
       const address = walletData.address ?? data.wallet?.address;
       const walletId = walletData.walletId ?? data.wallet?.id;
@@ -124,7 +176,7 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
       });
     } catch (error: unknown) {
       console.error("Login Error:", error);
-      setErrorMessage(error instanceof Error ? error.message : "Login failed");
+      setErrorMessage(getClientErrorMessage(error));
       setStep(1);
     } finally {
       setLoading(false);
