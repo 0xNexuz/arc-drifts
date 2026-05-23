@@ -33,6 +33,37 @@ type TransactionProofResponse = {
   error?: string;
 };
 
+type StreamHistoryStream = {
+  id: string;
+  sender: string;
+  recipient: string;
+  amount: string;
+  amountUnits: string;
+  withdrawn: string;
+  withdrawnUnits: string;
+  startTime: number;
+  endTime: number;
+  interval: number;
+  ruleType: StreamType;
+  active: boolean;
+  createdTxHash: string;
+  createdBlockNumber: string | null;
+};
+
+type StreamHistoryTransaction = {
+  label: string;
+  hash: string;
+  status: string;
+  blockNumber: string | null;
+};
+
+type StreamHistoryResponse = {
+  streams?: StreamHistoryStream[];
+  activeStream?: StreamHistoryStream | null;
+  transactions?: StreamHistoryTransaction[];
+  error?: string;
+};
+
 type CircleChallengeProof = {
   type?: string;
   status?: string;
@@ -330,6 +361,22 @@ function writeStoredStreamWindow(streamWindow: StoredStreamWindow) {
   window.localStorage.setItem(STREAM_STORAGE_KEY, JSON.stringify(streamWindow));
 }
 
+function streamWindowFromHistory(stream: StreamHistoryStream) {
+  const id = `chain-${stream.id}`;
+  const storedWindow = readStoredStreamWindow();
+
+  return {
+    id,
+    startTime: stream.startTime,
+    endTime: stream.endTime,
+    interval: stream.interval || Math.max(1, stream.endTime - stream.startTime),
+    ruleType: stream.ruleType,
+    amount: stream.amount,
+    recipient: stream.recipient,
+    completedNotified: storedWindow?.id === id ? storedWindow.completedNotified : false,
+  } satisfies StoredStreamWindow;
+}
+
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [circleSession, setCircleSession] = useState<CircleSession | null>(() => readStoredSession());
@@ -478,7 +525,63 @@ export default function Home() {
     setNotices((current) => current.filter((notice) => notice.id !== id));
   }
 
-  async function refreshUsdcBalance(session = circleSession) {
+  const refreshStreamHistory = useCallback(async (session: CircleSession, quiet = false) => {
+    try {
+      const res = await fetch("/api/stream-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: session.address }),
+      });
+      const data = await res.json() as StreamHistoryResponse;
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to fetch stream history");
+      }
+
+      if (data.activeStream) {
+        const restoredWindow = streamWindowFromHistory(data.activeStream);
+        setLastStreamWindow(restoredWindow);
+        writeStoredStreamWindow(restoredWindow);
+      }
+
+      if (data.transactions?.length) {
+        setProofs(data.transactions.map((transaction) => ({
+          label: transaction.label,
+          hash: transaction.hash,
+          status: transaction.status,
+        })));
+      }
+
+      if (data.activeStream) {
+        const typeLabel = streamTypes.find((type) => type.id === data.activeStream?.ruleType)?.label ?? "stream";
+        setStreamStatus(`Loaded ${typeLabel.toLowerCase()} #${data.activeStream.id} from contract`);
+        if (!quiet) {
+          notify("Stream restored", `Loaded drift #${data.activeStream.id} and its transaction history.`, "success");
+        }
+        return;
+      }
+
+      if (data.streams?.length) {
+        setStreamStatus(`Loaded ${data.streams.length} completed stream${data.streams.length === 1 ? "" : "s"} from contract`);
+        if (!quiet) {
+          notify("History loaded", "No active stream is running, but prior transactions are visible.", "info");
+        }
+        return;
+      }
+
+      if (!quiet) {
+        notify("No stream history", "This wallet has no Arc Drift contract events yet.", "info");
+      }
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      setStreamStatus(message);
+      if (!quiet) {
+        notify("History failed", message, "error");
+      }
+    }
+  }, [notify]);
+
+  const refreshUsdcBalance = useCallback(async (session = circleSession) => {
     if (!session) {
       setUsdcBalance(null);
       setBalanceStatus("Connect wallet to view USDC");
@@ -507,7 +610,20 @@ export default function Home() {
       setBalanceStatus(message);
       notify("Balance refresh failed", message, "error");
     }
-  }
+  }, [circleSession, notify]);
+
+  useEffect(() => {
+    if (!circleSession) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void refreshUsdcBalance(circleSession);
+      void refreshStreamHistory(circleSession, true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [circleSession, refreshStreamHistory, refreshUsdcBalance]);
 
   function disconnect() {
     setCircleSession(null);
@@ -774,6 +890,13 @@ export default function Home() {
                         >
                           Refresh balance
                         </button>
+                        <button
+                          onClick={() => circleSession && refreshStreamHistory(circleSession)}
+                          disabled={!circleSession}
+                          className="mt-3 rounded-lg border border-[#EDEDED]/10 px-3 py-2 text-xs uppercase tracking-[0.16em] text-[#EDEDED] transition hover:border-[#ACC6E9] hover:text-[#ACC6E9] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Refresh history
+                        </button>
                       </div>
                       <div className="rounded-lg border border-[#ACC6E9]/35 bg-[#ACC6E9]/10 p-5">
                         <p className="text-xs uppercase tracking-[0.2em] text-[#ACC6E9]">Status</p>
@@ -1013,6 +1136,7 @@ export default function Home() {
             setFaucetStatus(`Ready to copy ${formatAddress(session.address)} and open Circle Faucet.`);
             notify("Wallet connected", `${formatAddress(session.address)} is ready on Arc Testnet.`, "success");
             void refreshUsdcBalance(session);
+            void refreshStreamHistory(session);
             setShowLogin(false);
           }}
         />
