@@ -798,6 +798,7 @@ export default function Home() {
             <a href="#workflow" className="transition hover:text-[#ACC6E9]">Flow</a>
             <a href="#fund" className="transition hover:text-[#ACC6E9]">Faucet</a>
             <a href="#deploy" className="transition hover:text-[#ACC6E9]">Deploy</a>
+            <a href="/docs" className="transition hover:text-[#ACC6E9]">Docs</a>
           </div>
           <div className="flex items-center gap-2">
             <button
