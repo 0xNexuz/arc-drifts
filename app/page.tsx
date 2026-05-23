@@ -17,6 +17,13 @@ type ChallengeResponse = {
   error?: string;
 };
 
+type BalanceResponse = {
+  balance?: string;
+  rawBalance?: string;
+  symbol?: string;
+  error?: string;
+};
+
 type CircleChallengeProof = {
   type?: string;
   status?: string;
@@ -84,6 +91,23 @@ function secondsFrom(value: string, unit: TimeUnit) {
   }
 
   return Math.max(0, Math.round(parsed * timeMultipliers[unit]));
+}
+
+function formatBalance(value: string | null) {
+  if (!value) {
+    return "0.00";
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return value;
+  }
+
+  return parsed.toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+    minimumFractionDigits: parsed > 0 && parsed < 0.01 ? 6 : 2,
+  });
 }
 
 function executeCircleChallenge(session: CircleSession, challengeId: string) {
@@ -160,6 +184,15 @@ export default function Home() {
   const [intervalValue, setIntervalValue] = useState("1");
   const [intervalUnit, setIntervalUnit] = useState<TimeUnit>("hours");
   const [proofs, setProofs] = useState<TxProof[]>([]);
+  const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
+  const [balanceStatus, setBalanceStatus] = useState("Connect wallet to view USDC");
+  const [lastStreamWindow, setLastStreamWindow] = useState<{
+    startTime: number;
+    endTime: number;
+    ruleType: StreamType;
+    interval: number;
+  } | null>(null);
+  const [nowSeconds, setNowSeconds] = useState(() => Math.floor(Date.now() / 1000));
 
   const selectedType = useMemo(
     () => streamTypes.find((type) => type.id === streamType) ?? streamTypes[0],
@@ -192,11 +225,87 @@ export default function Home() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowSeconds(Math.floor(Date.now() / 1000));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const progressPercent = useMemo(() => {
+    if (!lastStreamWindow) {
+      return 0;
+    }
+
+    if (nowSeconds >= lastStreamWindow.endTime) {
+      return 100;
+    }
+
+    if (nowSeconds < lastStreamWindow.startTime) {
+      return 0;
+    }
+
+    const duration = lastStreamWindow.endTime - lastStreamWindow.startTime;
+
+    if (duration <= 0) {
+      return 100;
+    }
+
+    if (lastStreamWindow.ruleType === "delayed" || lastStreamWindow.ruleType === "cancelable") {
+      return 0;
+    }
+
+    if (lastStreamWindow.ruleType === "recurring") {
+      const elapsed = nowSeconds - lastStreamWindow.startTime;
+      const periods = Math.floor(elapsed / lastStreamWindow.interval);
+      const totalPeriods = Math.ceil(duration / lastStreamWindow.interval);
+      return Math.min(100, Math.max(0, (periods / totalPeriods) * 100));
+    }
+
+    return Math.min(100, Math.max(0, ((nowSeconds - lastStreamWindow.startTime) / duration) * 100));
+  }, [lastStreamWindow, nowSeconds]);
+
+  const progressLabel = lastStreamWindow
+    ? `${Math.round(progressPercent)}% unlocked`
+    : "No active stream preview";
+
+  async function refreshUsdcBalance(session = circleSession) {
+    if (!session) {
+      setUsdcBalance(null);
+      setBalanceStatus("Connect wallet to view USDC");
+      return;
+    }
+
+    setBalanceStatus("Refreshing USDC balance");
+
+    try {
+      const res = await fetch("/api/usdc-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: session.address }),
+      });
+      const data = await res.json() as BalanceResponse;
+
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to fetch USDC balance");
+      }
+
+      setUsdcBalance(data.balance ?? "0");
+      setBalanceStatus("USDC balance updated");
+    } catch (error: unknown) {
+      setBalanceStatus(getErrorMessage(error));
+    }
+  }
+
   function disconnect() {
     setCircleSession(null);
     setProofs([]);
+    setLastStreamWindow(null);
+    setUsdcBalance(null);
     setStreamStatus("Wallet disconnected");
     setFaucetStatus("Request test USDC after connecting.");
+    setBalanceStatus("Connect wallet to view USDC");
   }
 
   async function openFaucet() {
@@ -251,6 +360,13 @@ export default function Home() {
         throw new Error("Recurring interval cannot be longer than the total time frame");
       }
 
+      setLastStreamWindow({
+        startTime,
+        endTime,
+        interval: intervalSeconds || durationSeconds,
+        ruleType: selectedType.id,
+      });
+
       const approvalChallenge = await createChallenge("/api/approve-usdc-challenge", {
         userToken: circleSession.userToken,
         walletId: circleSession.walletId,
@@ -280,6 +396,7 @@ export default function Home() {
         { label: selectedType.label, hash: driftProof.txHash, status: driftProof.status, type: driftProof.type },
       ]);
       setStreamStatus("Stream submitted with transaction proof");
+      await refreshUsdcBalance(circleSession);
     } catch (err: unknown) {
       console.error("Tx Error:", err);
       setStreamStatus(getErrorMessage(err));
@@ -365,6 +482,15 @@ export default function Home() {
                         <span>{selectedType.label}</span>
                         <span>{amount || "0"} USDC</span>
                       </div>
+                      <div className="mt-8">
+                        <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-[#4A4A4A]">
+                          <span>{progressLabel}</span>
+                          <span>{formatBalance(usdcBalance)} USDC</span>
+                        </div>
+                        <div className="mt-3 h-2 rounded-full bg-[#050505]/10">
+                          <div className="h-2 rounded-full bg-[#ACC6E9] transition-all duration-700" style={{ width: `${progressPercent}%` }}></div>
+                        </div>
+                      </div>
                       <div className="mt-8 grid gap-2 text-sm text-[#303832]">
                         <span>Recipient: {isAddress(recipient) ? formatAddress(recipient) : "Invalid address"}</span>
                         <span>
@@ -377,6 +503,13 @@ export default function Home() {
                       <div className="rounded-lg border border-[#EDEDED]/10 bg-[#292929] p-5">
                         <p className="text-xs uppercase tracking-[0.2em] text-[#AFAFAF]">Connected</p>
                         <p className="mt-5 break-all text-2xl">{circleSession?.displayAddress ?? "Not signed"}</p>
+                        <button
+                          onClick={() => refreshUsdcBalance()}
+                          disabled={!circleSession}
+                          className="mt-5 rounded-lg border border-[#EDEDED]/10 px-3 py-2 text-xs uppercase tracking-[0.16em] text-[#EDEDED] transition hover:border-[#ACC6E9] hover:text-[#ACC6E9] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Refresh balance
+                        </button>
                       </div>
                       <div className="rounded-lg border border-[#ACC6E9]/35 bg-[#ACC6E9]/10 p-5">
                         <p className="text-xs uppercase tracking-[0.2em] text-[#ACC6E9]">Status</p>
@@ -531,6 +664,8 @@ export default function Home() {
 
                 {[
                   ["Amount units", amountUnits],
+                  ["USDC balance", `${formatBalance(usdcBalance)} USDC`],
+                  ["Balance state", balanceStatus],
                   ["Current state", streamStatus],
                   ["Connected wallet", circleSession?.address ?? "Not connected"],
                 ].map(([label, value]) => (
@@ -574,6 +709,7 @@ export default function Home() {
             setCircleSession(session);
             setStreamStatus("Wallet connected");
             setFaucetStatus(`Ready to copy ${formatAddress(session.address)} and open Circle Faucet.`);
+            void refreshUsdcBalance(session);
             setShowLogin(false);
           }}
         />
