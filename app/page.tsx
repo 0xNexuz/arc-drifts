@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { isAddress, parseUnits } from "viem";
 import LoginModal, { type CircleSession } from "./components/LoginModal";
+import SiteFooter from "./components/SiteFooter";
 
 const RECIPIENT_ADDRESS = "0x7034aF41397893321c4458ABB3B98F6c67065FaB";
 const ARC_EXPLORER = "https://testnet.arcscan.app";
@@ -1096,6 +1097,8 @@ export default function Home() {
           </div>
         </section>
       </main>
+
+      <SiteFooter />
 
       {notices.length > 0 && (
         <div className="fixed bottom-5 right-5 z-[60] grid w-[min(24rem,calc(100vw-2rem))] gap-3">

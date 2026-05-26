@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import SiteFooter from "../components/SiteFooter";
 
 const envVars = [
   ["CIRCLE_API_KEY", "Server-side Circle API key used by the app routes."],
@@ -194,6 +195,8 @@ npx hardhat run scripts/deploy.js --network arcTestnet`}</code>
           </div>
         </div>
       </section>
+
+      <SiteFooter />
     </main>
   );
 }
