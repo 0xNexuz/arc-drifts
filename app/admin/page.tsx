@@ -3,10 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import LoginModal, { type CircleSession } from "../components/LoginModal";
 import SiteFooter from "../components/SiteFooter";
 import type { StreamHistoryStream, StreamHistoryTransaction } from "../../lib/arcDrift";
 
 const ARC_EXPLORER = "https://testnet.arcscan.app";
+const SESSION_STORAGE_KEY = "arc-drift-circle-session";
 
 type AdminSummary = {
   metrics?: {
@@ -29,14 +31,44 @@ function formatAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function readStoredSession() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const rawSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!rawSession) {
+      return null;
+    }
+
+    const session = JSON.parse(rawSession) as CircleSession;
+    if (session.userToken && session.encryptionKey && session.walletId && session.address) {
+      return session;
+    }
+  } catch {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  }
+
+  return null;
+}
+
 export default function AdminPage() {
   const [password, setPassword] = useState("");
+  const [session, setSession] = useState<CircleSession | null>(() => readStoredSession());
+  const [showLogin, setShowLogin] = useState(false);
   const [summary, setSummary] = useState<AdminSummary | null>(null);
-  const [status, setStatus] = useState("Enter admin password to load the V2 snapshot.");
+  const [status, setStatus] = useState("Sign in with your allowed admin wallet, then enter the admin password.");
   const [loading, setLoading] = useState(false);
 
   async function loadSummary(event?: React.FormEvent) {
     event?.preventDefault();
+    if (!session) {
+      setStatus("Admin Circle login is required before the snapshot can load.");
+      setShowLogin(true);
+      return;
+    }
+
     setLoading(true);
     setStatus("Loading admin snapshot");
 
@@ -44,7 +76,11 @@ export default function AdminPage() {
       const res = await fetch("/api/admin/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({
+          password,
+          userToken: session.userToken,
+          walletAddress: session.address,
+        }),
       });
       const data = await res.json() as AdminSummary;
 
@@ -60,6 +96,13 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function disconnect() {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    setSession(null);
+    setSummary(null);
+    setStatus("Admin wallet disconnected.");
   }
 
   return (
@@ -83,10 +126,23 @@ export default function AdminPage() {
             <p className="text-xs uppercase tracking-[0.24em] text-[#ACC6E9]">Private operator view</p>
             <h1 className="mt-5 max-w-2xl text-6xl font-medium leading-none">Admin dashboard.</h1>
             <p className="mt-7 max-w-xl text-lg leading-8 text-[#CFCFCF]">
-              Password-gated V2 snapshot for streams, wallets, USDC volume, transaction hashes, and protocol activity.
+              Wallet-verified V2 snapshot for streams, wallets, USDC volume, transaction hashes, and protocol activity.
             </p>
           </div>
           <form onSubmit={loadSummary} className="grid content-start gap-3 rounded-lg border border-[#EDEDED]/12 bg-[#151515] p-4">
+            <div className="rounded-lg border border-[#EDEDED]/10 bg-[#050505] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#AFAFAF]">Admin wallet</p>
+              <p className="mt-3 break-all font-mono text-sm text-[#EDEDED]">
+                {session?.address ?? "Not connected"}
+              </p>
+              <button
+                type="button"
+                onClick={() => session ? disconnect() : setShowLogin(true)}
+                className="mt-4 h-10 rounded-lg border border-[#EDEDED]/10 px-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#EDEDED] transition hover:border-[#ACC6E9] hover:text-[#ACC6E9]"
+              >
+                {session ? "Disconnect" : "Sign in"}
+              </button>
+            </div>
             <label className="grid gap-2 text-sm font-semibold">
               Admin password
               <input
@@ -99,7 +155,7 @@ export default function AdminPage() {
             </label>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !session}
               className="h-12 rounded-lg bg-[#ACC6E9] px-5 text-sm font-semibold uppercase tracking-[0.16em] text-[#050505] transition hover:bg-[#EDEDED] disabled:cursor-wait disabled:opacity-70"
             >
               {loading ? "Loading" : "Open admin"}
@@ -176,6 +232,16 @@ export default function AdminPage() {
       )}
 
       <SiteFooter />
+      {showLogin && (
+        <LoginModal
+          onLoginSuccess={(nextSession) => {
+            setSession(nextSession);
+            setShowLogin(false);
+            window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+            setStatus("Admin wallet connected. Enter the admin password to load the snapshot.");
+          }}
+        />
+      )}
     </main>
   );
 }

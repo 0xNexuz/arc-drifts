@@ -9,6 +9,7 @@ const envVars = [
   ["NEXT_PUBLIC_USDC_ADDRESS", "Arc Testnet USDC address."],
   ["ARC_RPC_URL", "Arc Testnet RPC endpoint for reads, balances, and event history."],
   ["ADMIN_DASHBOARD_PASSWORD", "Password gate for the private /admin dashboard."],
+  ["ADMIN_ALLOWED_WALLETS", "Comma-separated Arc wallet allowlist for /admin access."],
   ["NEXT_PUBLIC_APP_URL", "Base URL used when generating public payment links."],
   ["RESEND_API_KEY", "Optional email provider key for outbound V2 notifications."],
   ["NOTIFICATION_FROM_EMAIL", "Optional verified sender address for notification emails."],
@@ -25,7 +26,7 @@ const apiRoutes = [
   ["POST /api/stream-history", "Reads Arc Drift contract events and restores stream progress plus tx links."],
   ["POST /api/execute-drift-challenge", "Creates a Circle challenge to claim unlocked stream funds."],
   ["POST /api/cancel-drift-challenge", "Creates a Circle challenge to cancel cancellable escrows."],
-  ["POST /api/admin/summary", "Password-protected admin snapshot rebuilt from on-chain events."],
+  ["POST /api/admin/summary", "Password and wallet-protected admin snapshot rebuilt from on-chain events."],
   ["POST /api/payment-link", "Creates a database-free encoded public payment request link."],
   ["POST /api/notifications", "Queues stream lifecycle emails when an email provider is configured."],
 ];
@@ -54,7 +55,7 @@ const contractEvents = [
 
 const v2Surfaces = [
   ["/dashboard", "User stream dashboard", "Wallet owners can view active, completed, cancelled, and recurring streams, then claim or cancel eligible escrows."],
-  ["/admin", "Private admin dashboard", "Password-gated operator view for wallets, USDC volume, stream counts, and transaction hashes without a database."],
+  ["/admin", "Private admin dashboard", "Circle wallet and password-gated operator view for wallets, USDC volume, stream counts, and transaction hashes without a database."],
   ["/pay/[request]", "Public payment links", "Encoded links let clients and creators share a requested recipient, amount, timeframe, and memo."],
   ["/docs", "Docs V2", "Documents routes, contract events, payment links, notification hooks, and the Arc Drift escrow workflow."],
 ];

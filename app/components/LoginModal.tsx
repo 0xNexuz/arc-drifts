@@ -9,6 +9,7 @@ export type CircleSession = {
   walletId: string;
   address: string;
   displayAddress: string;
+  email?: string;
 };
 
 type CircleAuthResponse = {
@@ -173,6 +174,7 @@ export default function LoginModal({ onLoginSuccess }: { onLoginSuccess: (sessio
         walletId,
         address,
         displayAddress: formatAddress(address),
+        email,
       });
     } catch (error: unknown) {
       console.error("Login Error:", error);
