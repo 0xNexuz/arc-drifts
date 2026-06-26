@@ -30,6 +30,7 @@ export const driftAbi = parseAbi([
 
 export const ruleTypes = ["streaming", "delayed", "cancelable", "recurring"] as const;
 export type StreamType = (typeof ruleTypes)[number];
+const DEFAULT_DRIFT_EVENT_START_BLOCK = 43_692_725n;
 
 export type StreamHistoryStream = {
   id: string;
@@ -63,6 +64,23 @@ export type StreamHistoryResult = {
   transactions: StreamHistoryTransaction[];
 };
 
+type DriftCreatedLog = {
+  args: {
+    driftId?: bigint;
+  };
+  transactionHash: Address;
+  logIndex: number | null;
+  blockNumber: bigint | null;
+};
+
+type DriftLifecycleLog = {
+  args: {
+    driftId?: bigint;
+  };
+  transactionHash: Address;
+  blockNumber: bigint | null;
+};
+
 export function getContractAddress(): Address {
   const contractAddress = process.env.NEXT_PUBLIC_ARC_DRIFT_CONTRACT_ADDRESS ?? process.env.CONTRACT_ADDRESS;
 
@@ -84,7 +102,7 @@ export function getStartBlock() {
   const configuredBlock = process.env.ARC_DRIFT_DEPLOY_BLOCK ?? process.env.NEXT_PUBLIC_ARC_DRIFT_DEPLOY_BLOCK;
 
   if (!configuredBlock) {
-    return 0n;
+    return DEFAULT_DRIFT_EVENT_START_BLOCK;
   }
 
   try {
@@ -92,6 +110,36 @@ export function getStartBlock() {
   } catch {
     return 0n;
   }
+}
+
+type PublicClient = ReturnType<typeof getPublicClient>;
+type LogRequest = NonNullable<Parameters<PublicClient["getLogs"]>[0]>;
+
+async function getLogsInChunks<TLog>(client: PublicClient, request: LogRequest, maxLogs?: number) {
+  const startBlock = typeof request.fromBlock === "bigint" ? request.fromBlock : 0n;
+  const latestBlock = await client.getBlockNumber();
+  const chunkSize = 9_999n;
+  const logs: TLog[] = [];
+
+  for (let toBlock = latestBlock; toBlock >= startBlock; toBlock -= chunkSize + 1n) {
+    const fromBlock = toBlock > startBlock + chunkSize ? toBlock - chunkSize : startBlock;
+    const chunkLogs = await client.getLogs({
+      ...request,
+      fromBlock,
+      toBlock,
+    } as LogRequest);
+    logs.push(...(chunkLogs as TLog[]));
+
+    if (maxLogs && logs.length >= maxLogs) {
+      break;
+    }
+
+    if (fromBlock === startBlock) {
+      break;
+    }
+  }
+
+  return logs;
 }
 
 export async function getDriftHistory(address?: string, limit = 50): Promise<StreamHistoryResult> {
@@ -106,27 +154,27 @@ export async function getDriftHistory(address?: string, limit = 50): Promise<Str
 
   const createdLogs = address
     ? [
-        ...await client.getLogs({
+        ...await getLogsInChunks<DriftCreatedLog>(client, {
           address: contractAddress,
           event: driftAbi[0],
           args: { sender: walletAddress },
           fromBlock,
           toBlock: "latest",
-        }),
-        ...await client.getLogs({
+        }, limit),
+        ...await getLogsInChunks<DriftCreatedLog>(client, {
           address: contractAddress,
           event: driftAbi[0],
           args: { recipient: walletAddress },
           fromBlock,
           toBlock: "latest",
-        }),
+        }, limit),
       ]
-    : await client.getLogs({
+    : await getLogsInChunks<DriftCreatedLog>(client, {
         address: contractAddress,
         event: driftAbi[0],
         fromBlock,
         toBlock: "latest",
-      });
+      }, limit);
 
   const uniqueCreatedLogs = createdLogs
     .filter((log, index, logs) => logs.findIndex((item) => item.transactionHash === log.transactionHash && item.logIndex === log.logIndex) === index)
@@ -185,50 +233,63 @@ export async function getDriftHistory(address?: string, limit = 50): Promise<Str
     };
   }));
 
-  const transactions = await Promise.all(uniqueCreatedLogs.map(async (log) => {
-    const driftId = log.args.driftId;
-    if (driftId === undefined) {
-      throw new Error("DriftCreated log is missing driftId");
+  const driftIds = new Set(uniqueCreatedLogs.map((log) => log.args.driftId?.toString()).filter(Boolean));
+  const earliestCreatedBlock = uniqueCreatedLogs.reduce<bigint | null>((earliest, log) => {
+    if (!log.blockNumber) {
+      return earliest;
     }
 
-    const [executedLogs, canceledLogs] = await Promise.all([
-      client.getLogs({
-        address: contractAddress,
-        event: driftAbi[1],
-        args: { driftId },
-        fromBlock: log.blockNumber ?? fromBlock,
-        toBlock: "latest",
-      }),
-      client.getLogs({
-        address: contractAddress,
-        event: driftAbi[2],
-        args: { driftId },
-        fromBlock: log.blockNumber ?? fromBlock,
-        toBlock: "latest",
-      }),
-    ]);
+    return earliest === null || log.blockNumber < earliest ? log.blockNumber : earliest;
+  }, null);
 
-    return [
-      {
+  const [executedLogs, canceledLogs] = earliestCreatedBlock
+    ? await Promise.all([
+        getLogsInChunks<DriftLifecycleLog>(client, {
+          address: contractAddress,
+          event: driftAbi[1],
+          fromBlock: earliestCreatedBlock,
+          toBlock: "latest",
+        }, limit * 3),
+        getLogsInChunks<DriftLifecycleLog>(client, {
+          address: contractAddress,
+          event: driftAbi[2],
+          fromBlock: earliestCreatedBlock,
+          toBlock: "latest",
+        }, limit * 3),
+      ])
+    : [[], []];
+
+  const transactions = [
+    ...uniqueCreatedLogs.map((log) => {
+      const driftId = log.args.driftId;
+      if (driftId === undefined) {
+        throw new Error("DriftCreated log is missing driftId");
+      }
+
+      return {
         label: `Drift #${driftId.toString()} created`,
         hash: log.transactionHash,
         status: "created" as const,
         blockNumber: log.blockNumber?.toString() ?? null,
-      },
-      ...executedLogs.map((eventLog) => ({
-        label: `Drift #${driftId.toString()} executed`,
+      };
+    }),
+    ...executedLogs
+      .filter((eventLog) => eventLog.args.driftId !== undefined && driftIds.has(eventLog.args.driftId.toString()))
+      .map((eventLog) => ({
+        label: `Drift #${eventLog.args.driftId?.toString()} executed`,
         hash: eventLog.transactionHash,
         status: "executed" as const,
         blockNumber: eventLog.blockNumber?.toString() ?? null,
       })),
-      ...canceledLogs.map((eventLog) => ({
-        label: `Drift #${driftId.toString()} canceled`,
+    ...canceledLogs
+      .filter((eventLog) => eventLog.args.driftId !== undefined && driftIds.has(eventLog.args.driftId.toString()))
+      .map((eventLog) => ({
+        label: `Drift #${eventLog.args.driftId?.toString()} canceled`,
         hash: eventLog.transactionHash,
         status: "canceled" as const,
         blockNumber: eventLog.blockNumber?.toString() ?? null,
       })),
-    ];
-  }));
+  ];
 
   const now = Math.floor(Date.now() / 1000);
   const activeStream = streams.find((stream) => stream.active && stream.endTime > now)
@@ -239,7 +300,6 @@ export async function getDriftHistory(address?: string, limit = 50): Promise<Str
     streams,
     activeStream,
     transactions: transactions
-      .flat()
       .filter((transaction, index, all) => all.findIndex((item) => item.hash === transaction.hash && item.label === transaction.label) === index)
       .sort((a, b) => Number(BigInt(b.blockNumber ?? "0") - BigInt(a.blockNumber ?? "0")))
       .slice(0, limit),
