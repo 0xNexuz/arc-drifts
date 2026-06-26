@@ -8,6 +8,10 @@ const envVars = [
   ["NEXT_PUBLIC_ARC_DRIFT_CONTRACT_ADDRESS", "Arc Drift Core contract on Arc Testnet."],
   ["NEXT_PUBLIC_USDC_ADDRESS", "Arc Testnet USDC address."],
   ["ARC_RPC_URL", "Arc Testnet RPC endpoint for reads, balances, and event history."],
+  ["ADMIN_DASHBOARD_PASSWORD", "Password gate for the private /admin dashboard."],
+  ["NEXT_PUBLIC_APP_URL", "Base URL used when generating public payment links."],
+  ["RESEND_API_KEY", "Optional email provider key for outbound V2 notifications."],
+  ["NOTIFICATION_FROM_EMAIL", "Optional verified sender address for notification emails."],
   ["PRIVATE_KEY", "Optional deployer key for Hardhat contract deployment."],
 ];
 
@@ -19,6 +23,11 @@ const apiRoutes = [
   ["POST /api/create-drift-challenge", "Creates the Circle challenge that calls createDrift on Arc Drift Core."],
   ["POST /api/transaction-proof", "Polls Circle transaction history for tx hash proof after a challenge completes."],
   ["POST /api/stream-history", "Reads Arc Drift contract events and restores stream progress plus tx links."],
+  ["POST /api/execute-drift-challenge", "Creates a Circle challenge to claim unlocked stream funds."],
+  ["POST /api/cancel-drift-challenge", "Creates a Circle challenge to cancel cancellable escrows."],
+  ["POST /api/admin/summary", "Password-protected admin snapshot rebuilt from on-chain events."],
+  ["POST /api/payment-link", "Creates a database-free encoded public payment request link."],
+  ["POST /api/notifications", "Queues stream lifecycle emails when an email provider is configured."],
 ];
 
 const flow = [
@@ -41,6 +50,13 @@ const contractEvents = [
   ["DriftCreated", "Primary event used to restore stream metadata and creation tx hash."],
   ["DriftExecuted", "Shows withdrawal/execution transactions in the history panel."],
   ["DriftCanceled", "Shows cancelled streams and refund transactions."],
+];
+
+const v2Surfaces = [
+  ["/dashboard", "User stream dashboard", "Wallet owners can view active, completed, cancelled, and recurring streams, then claim or cancel eligible escrows."],
+  ["/admin", "Private admin dashboard", "Password-gated operator view for wallets, USDC volume, stream counts, and transaction hashes without a database."],
+  ["/pay/[request]", "Public payment links", "Encoded links let clients and creators share a requested recipient, amount, timeframe, and memo."],
+  ["/docs", "Docs V2", "Documents routes, contract events, payment links, notification hooks, and the Arc Drift escrow workflow."],
 ];
 
 export default function DocsPage() {
@@ -68,8 +84,8 @@ export default function DocsPage() {
               Build with Arc Drift.
             </h1>
             <p className="mt-7 max-w-lg text-lg leading-8 text-[#CFCFCF]">
-              Arc Drift combines Circle programmable wallets, Arc Testnet USDC, and a rule-based streaming contract.
-              This page maps the app flow, server routes, env setup, and recovery behavior.
+              Arc Drift helps freelancers, creators, companies, and agencies run milestone and time-based escrow payments with Circle wallets and Arc Testnet USDC.
+              This page maps the app flow, V2 routes, env setup, and recovery behavior.
             </p>
           </div>
 
@@ -146,6 +162,26 @@ npx hardhat run scripts/deploy.js --network arcTestnet`}</code>
               <div key={route} className="grid gap-3 bg-[#151515] p-5 md:grid-cols-[18rem_1fr]">
                 <code className="break-all font-mono text-sm text-[#ACC6E9]">{route}</code>
                 <p className="leading-7 text-[#AFAFAF]">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-[#EDEDED]/10 px-5 py-16 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.24em] text-[#ACC6E9]">V2 surfaces</p>
+            <h2 className="mt-5 text-5xl font-medium leading-none">Added without changing the main app.</h2>
+          </div>
+          <div className="grid gap-3">
+            {v2Surfaces.map(([route, title, body]) => (
+              <div key={route} className="grid gap-3 rounded-lg border border-[#EDEDED]/10 bg-[#151515] p-5 md:grid-cols-[12rem_1fr]">
+                <code className="font-mono text-sm text-[#ACC6E9]">{route}</code>
+                <div>
+                  <h3 className="text-xl">{title}</h3>
+                  <p className="mt-2 leading-7 text-[#AFAFAF]">{body}</p>
+                </div>
               </div>
             ))}
           </div>
